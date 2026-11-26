@@ -90,6 +90,21 @@ export const init = () => {
     };
 
     /**
+     * Parse bounded integer value.
+     *
+     * @param {string} name
+     * @param {number} fallback
+     * @param {number} min
+     * @param {number} max
+     * @return {number}
+     */
+    const getIntVal = (name, fallback, min, max) => {
+        const parsed = parseInt(getVal(name, String(fallback)), 10);
+        const val = isNaN(parsed) ? fallback : parsed;
+        return Math.max(min, Math.min(max, val));
+    };
+
+    /**
      * Normalize hex color.
      *
      * @param {string} value
@@ -111,9 +126,7 @@ export const init = () => {
         if (!match) {
             return null;
         }
-        const hex = (x) => {
-            return ('0' + parseInt(x, 10).toString(16)).slice(-2);
-        };
+        const hex = (x) => ('0' + parseInt(x, 10).toString(16)).slice(-2);
         return '#' + hex(match[1]) + hex(match[2]) + hex(match[3]);
     };
 
@@ -130,8 +143,8 @@ export const init = () => {
             '--brand-primary',
             '--theme-primary',
         ];
-        for (let i = 0; i < vars.length; i++) {
-            const v = rootStyles.getPropertyValue(vars[i]).trim();
+        for (const vName of vars) {
+            const v = rootStyles.getPropertyValue(vName).trim();
             if (/^#[0-9a-fA-F]{6}$/.test(v)) {
                 return v;
             }
@@ -142,8 +155,7 @@ export const init = () => {
         }
         const probe = document.querySelector('.btn-primary, .nav-link.active');
         if (probe) {
-            const bg = getComputedStyle(probe).backgroundColor;
-            const hex = rgbToHex(bg);
+            const hex = rgbToHex(getComputedStyle(probe).backgroundColor);
             if (hex && hex !== '#000000' && hex !== '#ffffff') {
                 return hex;
             }
@@ -207,41 +219,13 @@ export const init = () => {
     };
 
     /**
-     * Apply values map to controls.
-     *
-     * @param {Object} map
-     */
-    const applyValues = (map) => {
-        Object.keys(map).forEach((name) => {
-            const real = mInput(name);
-            const bound = document.querySelector(`[data-bind="${name}"]`);
-            const picker = document.querySelector(`[data-color="${name}"]`);
-            if (real) {
-                real.value = map[name];
-                real.dispatchEvent(new Event('change', {bubbles: true}));
-            }
-            if (bound) {
-                bound.value = map[name];
-            }
-            if (picker) {
-                picker.value = normHex(map[name], '#6366f1');
-            }
-        });
-        renderPreview();
-        playPreviewAnim();
-    };
-
-    /**
      * Play preview title and body animations.
      */
     const playPreviewAnim = () => {
         const ov = getCurrentStepOverride();
         const tAnim = ov.titleanim || getVal('titleanim', 'typing');
         const bAnim = ov.bodyanim || getVal('bodyanim', 'fade_up');
-        const speed = Math.max(
-            15,
-            Math.min(90, parseInt(getVal('typingspeed', '35'), 10) || 35)
-        );
+        const speed = getIntVal('typingspeed', 35, 15, 90);
         const titleEl = document.getElementById('lx-prev-title');
         const bodyEl = document.getElementById('lx-prev-body');
         if (!titleEl || !bodyEl) {
@@ -276,19 +260,145 @@ export const init = () => {
             }, speed);
         } else {
             titleEl.textContent = activeTitle;
-            if (tAnim === 'fade_up') {
-                titleEl.style.animation = 'lxTourFadeUp 0.45s ease both';
-            } else if (tAnim === 'blur_in') {
-                titleEl.style.animation = 'lxTourBlurIn 0.5s ease both';
+            const tMap = {
+                fade_up: 'lxTourFadeUp 0.45s ease both',
+                blur_in: 'lxTourBlurIn 0.5s ease both',
+            };
+            if (tMap[tAnim]) {
+                titleEl.style.animation = tMap[tAnim];
             }
         }
 
-        if (bAnim === 'fade_up') {
-            bodyEl.style.animation = 'lxTourFadeUp 0.5s ease 0.12s both';
-        } else if (bAnim === 'blur_in') {
-            bodyEl.style.animation = 'lxTourBlurIn 0.55s ease 0.12s both';
-        } else if (bAnim === 'slide_in') {
-            bodyEl.style.animation = 'lxTourSlideIn 0.45s ease 0.12s both';
+        const bMap = {
+            fade_up: 'lxTourFadeUp 0.5s ease 0.12s both',
+            blur_in: 'lxTourBlurIn 0.55s ease 0.12s both',
+            slide_in: 'lxTourSlideIn 0.45s ease 0.12s both',
+        };
+        if (bMap[bAnim]) {
+            bodyEl.style.animation = bMap[bAnim];
+        }
+    };
+
+    /**
+     * Render preview backdrop and target mock.
+     *
+     * @param {boolean} dark
+     * @param {string} spotColor
+     */
+    const renderPreviewBackdrop = (dark, spotColor) => {
+        const bdMode = getVal('backdropmode', 'blur');
+        const bdColor = getVal('backdropcolor', '#0f172a');
+        const bdOpacity = getIntVal('backdropopacity', 58, 0, 95);
+        const bdBlur = getIntVal('backdropblur', 4, 0, 20);
+
+        document.getElementById('lx-val-backdropopacity').textContent =
+            bdOpacity + '%';
+        document.getElementById('lx-val-backdropblur').textContent =
+            bdBlur + 'px';
+
+        const targetMock = document.getElementById('lx-stage-target-mock');
+        if (targetMock) {
+            targetMock.style.background = dark ? '#1e293b' : '#ffffff';
+            targetMock.style.color = dark ? '#f8fafc' : '#0f172a';
+            targetMock.style.border = '2px solid ' + spotColor;
+            targetMock.style.boxShadow =
+                '0 0 0 4px ' + hexToRgba(spotColor, 0.28);
+        }
+
+        const stageBd = document.getElementById('lx-stage-backdrop');
+        if (!stageBd) {
+            return;
+        }
+        if (bdMode === 'none' || bdMode === 'transparent') {
+            stageBd.style.background = 'transparent';
+            stageBd.style.backdropFilter = 'none';
+            stageBd.style.webkitBackdropFilter = 'none';
+        } else if (bdMode === 'solid') {
+            stageBd.style.background = hexToRgba(bdColor, bdOpacity / 100);
+            stageBd.style.backdropFilter = 'none';
+            stageBd.style.webkitBackdropFilter = 'none';
+        } else {
+            stageBd.style.background = hexToRgba(bdColor, bdOpacity / 100);
+            stageBd.style.backdropFilter = `blur(${bdBlur}px)`;
+            stageBd.style.webkitBackdropFilter = `blur(${bdBlur}px)`;
+        }
+    };
+
+    /**
+     * Render preview card surface style.
+     *
+     * @param {HTMLElement} card
+     * @param {boolean} dark
+     * @param {string} preset
+     * @param {number} radius
+     */
+    const renderPreviewCardSurface = (card, dark, preset, radius) => {
+        card.style.borderRadius = radius + 'px';
+        if (dark) {
+            card.style.background = preset === 'glass' ?
+                'rgba(15, 23, 42, 0.8)' : 'rgba(15, 23, 42, 0.95)';
+            card.style.backdropFilter = preset === 'minimal' ?
+                'none' : 'blur(18px)';
+            card.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+            card.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.6)';
+            return;
+        }
+        const lightMap = {
+            glass: [
+                'rgba(255, 255, 255, 0.78)',
+                'blur(20px)',
+                '0 24px 48px -12px rgba(15, 23, 42, 0.22)',
+            ],
+            minimal: [
+                '#ffffff',
+                'none',
+                '0 10px 25px rgba(15, 23, 42, 0.12)',
+            ],
+            saas: [
+                'rgba(255, 255, 255, 0.96)',
+                'blur(16px)',
+                '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+            ],
+        };
+        const [bg, blur, shadow] = lightMap[preset] || lightMap.saas;
+        card.style.background = bg;
+        card.style.backdropFilter = blur;
+        card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
+        card.style.boxShadow = shadow;
+    };
+
+    /**
+     * Render preview top accent bar.
+     */
+    const renderPreviewAccent = () => {
+        const accentstyle = getVal('accentstyle', 'gradient_animated');
+        const c1 = getVal('accentcolor1', '#6366f1');
+        const c2 = getVal('accentcolor2', '#8b5cf6');
+        const c3 = getVal('accentcolor3', '#0ea5e9');
+        const ah = getIntVal('accentheight', 5, 0, 20);
+
+        document.getElementById('lx-val-accentheight').textContent = ah + 'px';
+        const acc = document.getElementById('lx-prev-accent');
+        if (accentstyle === 'hidden' || ah === 0) {
+            acc.style.display = 'none';
+            return;
+        }
+        acc.style.display = 'block';
+        acc.style.height = ah + 'px';
+        if (accentstyle === 'solid') {
+            acc.style.backgroundImage = 'none';
+            acc.style.backgroundColor = c1;
+            acc.style.animation = 'none';
+        } else if (accentstyle === 'gradient_static') {
+            acc.style.backgroundImage =
+                `linear-gradient(90deg,${c1},${c2},${c3})`;
+            acc.style.backgroundSize = '100% 100%';
+            acc.style.animation = 'none';
+        } else {
+            acc.style.backgroundImage =
+                `linear-gradient(90deg,${c1},${c2},${c3},${c1})`;
+            acc.style.backgroundSize = '300% 100%';
+            acc.style.animation = 'lxTourGradientFlow 3s ease infinite';
         }
     };
 
@@ -302,62 +412,15 @@ export const init = () => {
         }
 
         const ov = getCurrentStepOverride();
-        const colorMode = getVal('colormode', 'auto');
-        const dark = isPreviewDark(colorMode);
+        const dark = isPreviewDark(getVal('colormode', 'auto'));
         const preset = getVal('preset', 'saas');
-
-        const primary = ov.primarycolor || getVal('primarycolor', '#6366f1');
-        const headerbg = ov.headerbg || getVal('headerbg', '#ffffff');
-        const titlecolor = ov.titlecolor || getVal('titlecolor', '#0f172a');
-        const footerbg = getVal('footerbg', '#f8fafc');
-        const textcolor = getVal('textcolor', '#475569');
-        const radius = Math.max(
-            0,
-            Math.min(48, parseInt(getVal('borderradius', '20'), 10) || 0)
-        );
-
-        const accentstyle = getVal('accentstyle', 'gradient_animated');
-        const c1 = getVal('accentcolor1', '#6366f1');
-        const c2 = getVal('accentcolor2', '#8b5cf6');
-        const c3 = getVal('accentcolor3', '#0ea5e9');
-        const ah = Math.max(
-            0,
-            Math.min(20, parseInt(getVal('accentheight', '5'), 10) || 0)
-        );
-        const spotColor = ov.spotlightcolor ||
-            getVal('spotlightcolor', '#6366f1');
-
-        const iconcls = ov.icon || getVal('headericon', 'fa fa-star');
-        const nextbg = getVal('nextbtnbg', '#6366f1');
-        const nexttxt = getVal('nextbtntext', '#ffffff');
-        const endbg = getVal('endbtnbg', '#ffffff');
-        const endtxt = getVal('endbtntext', '#475569');
-        const btnrad = Math.max(
-            0,
-            Math.min(30, parseInt(getVal('btnradius', '10'), 10) || 0)
-        );
-
-        const bdMode = getVal('backdropmode', 'blur');
-        const bdColor = getVal('backdropcolor', '#0f172a');
-        const bdOpacity = Math.max(
-            0,
-            Math.min(95, parseInt(getVal('backdropopacity', '58'), 10) || 0)
-        );
-        const bdBlur = Math.max(
-            0,
-            Math.min(20, parseInt(getVal('backdropblur', '4'), 10) || 0)
-        );
+        const radius = getIntVal('borderradius', 20, 0, 48);
+        const btnrad = getIntVal('btnradius', 10, 0, 30);
 
         document.getElementById('lx-val-borderradius').textContent =
             radius + 'px';
         document.getElementById('lx-val-btnradius').textContent =
             btnrad + 'px';
-        document.getElementById('lx-val-accentheight').textContent =
-            ah + 'px';
-        document.getElementById('lx-val-backdropopacity').textContent =
-            bdOpacity + '%';
-        document.getElementById('lx-val-backdropblur').textContent =
-            bdBlur + 'px';
 
         const stageBadge = document.getElementById('lx-stage-badge');
         const prevBody = document.getElementById('lx-prev-body');
@@ -366,7 +429,8 @@ export const init = () => {
         if (activeMode === 'tours' && selectedStep) {
             if (stageBadge) {
                 stageBadge.textContent =
-                    `Step ${selectedStepIndex + 1} of ${selectedTourTotal} Preview`;
+                    `Step ${selectedStepIndex + 1} of ` +
+                    `${selectedTourTotal} Preview`;
             }
             prevBody.innerHTML = selectedStep.content ||
                 '<em>Empty step content</em>';
@@ -384,84 +448,16 @@ export const init = () => {
             }
         }
 
-        const targetMock = document.getElementById('lx-stage-target-mock');
-        if (targetMock) {
-            targetMock.style.background = dark ? '#1e293b' : '#ffffff';
-            targetMock.style.color = dark ? '#f8fafc' : '#0f172a';
-            targetMock.style.border = '2px solid ' + spotColor;
-            targetMock.style.boxShadow =
-                '0 0 0 4px ' + hexToRgba(spotColor, 0.28);
-        }
+        renderPreviewBackdrop(
+            dark,
+            ov.spotlightcolor || getVal('spotlightcolor', '#6366f1')
+        );
+        renderPreviewCardSurface(card, dark, preset, radius);
+        renderPreviewAccent();
 
-        const stageBd = document.getElementById('lx-stage-backdrop');
-        if (stageBd) {
-            if (bdMode === 'none' || bdMode === 'transparent') {
-                stageBd.style.background = 'transparent';
-                stageBd.style.backdropFilter = 'none';
-                stageBd.style.webkitBackdropFilter = 'none';
-            } else if (bdMode === 'solid') {
-                stageBd.style.background = hexToRgba(bdColor, bdOpacity / 100);
-                stageBd.style.backdropFilter = 'none';
-                stageBd.style.webkitBackdropFilter = 'none';
-            } else {
-                stageBd.style.background = hexToRgba(bdColor, bdOpacity / 100);
-                stageBd.style.backdropFilter = `blur(${bdBlur}px)`;
-                stageBd.style.webkitBackdropFilter = `blur(${bdBlur}px)`;
-            }
-        }
-
-        card.style.borderRadius = radius + 'px';
-        if (dark) {
-            card.style.background = preset === 'glass' ?
-                'rgba(15, 23, 42, 0.8)' : 'rgba(15, 23, 42, 0.95)';
-            card.style.backdropFilter = preset === 'minimal' ?
-                'none' : 'blur(18px)';
-            card.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-            card.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.6)';
-        } else if (preset === 'glass') {
-            card.style.background = 'rgba(255, 255, 255, 0.78)';
-            card.style.backdropFilter = 'blur(20px)';
-            card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
-            card.style.boxShadow =
-                '0 24px 48px -12px rgba(15, 23, 42, 0.22)';
-        } else if (preset === 'minimal') {
-            card.style.background = '#ffffff';
-            card.style.backdropFilter = 'none';
-            card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
-            card.style.boxShadow =
-                '0 10px 25px rgba(15, 23, 42, 0.12)';
-        } else {
-            card.style.background = 'rgba(255, 255, 255, 0.96)';
-            card.style.backdropFilter = 'blur(16px)';
-            card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
-            card.style.boxShadow =
-                '0 25px 50px -12px rgba(15, 23, 42, 0.25)';
-        }
-
-        const acc = document.getElementById('lx-prev-accent');
-        if (accentstyle === 'hidden' || ah === 0) {
-            acc.style.display = 'none';
-        } else if (accentstyle === 'solid') {
-            acc.style.display = 'block';
-            acc.style.height = ah + 'px';
-            acc.style.backgroundImage = 'none';
-            acc.style.backgroundColor = c1;
-            acc.style.animation = 'none';
-        } else if (accentstyle === 'gradient_static') {
-            acc.style.display = 'block';
-            acc.style.height = ah + 'px';
-            acc.style.backgroundImage =
-                `linear-gradient(90deg,${c1},${c2},${c3})`;
-            acc.style.backgroundSize = '100% 100%';
-            acc.style.animation = 'none';
-        } else {
-            acc.style.display = 'block';
-            acc.style.height = ah + 'px';
-            acc.style.backgroundImage =
-                `linear-gradient(90deg,${c1},${c2},${c3},${c1})`;
-            acc.style.backgroundSize = '300% 100%';
-            acc.style.animation = 'lxTourGradientFlow 3s ease infinite';
-        }
+        const primary = ov.primarycolor || getVal('primarycolor', '#6366f1');
+        const headerbg = ov.headerbg || getVal('headerbg', '#ffffff');
+        const titlecolor = ov.titlecolor || getVal('titlecolor', '#0f172a');
 
         document.getElementById('lx-prev-header').style.background =
             (dark && !ov.headerbg) ? '#1e293b' : headerbg;
@@ -474,24 +470,53 @@ export const init = () => {
         iconBox.style.color = primary;
         iconBox.style.background =
             `color-mix(in srgb, ${primary} 15%, transparent)`;
-        document.getElementById('lx-prev-icon').className = iconcls;
+        document.getElementById('lx-prev-icon').className =
+            ov.icon || getVal('headericon', 'fa fa-star');
 
-        prevBody.style.color = dark ? '#e2e8f0' : textcolor;
+        prevBody.style.color = dark ?
+            '#e2e8f0' : getVal('textcolor', '#475569');
         document.getElementById('lx-prev-footer').style.background =
-            dark ? '#0b1120' : footerbg;
+            dark ? '#0b1120' : getVal('footerbg', '#f8fafc');
 
         const btnNext = document.getElementById('lx-prev-btn-next');
-        btnNext.style.background = nextbg;
-        btnNext.style.color = nexttxt;
+        btnNext.style.background = getVal('nextbtnbg', '#6366f1');
+        btnNext.style.color = getVal('nextbtntext', '#ffffff');
         btnNext.style.borderRadius = btnrad + 'px';
 
         const btnEnd = document.getElementById('lx-prev-btn-end');
-        btnEnd.style.background = dark ? '#1e293b' : endbg;
-        btnEnd.style.color = dark ? '#e2e8f0' : endtxt;
+        btnEnd.style.background = dark ?
+            '#1e293b' : getVal('endbtnbg', '#ffffff');
+        btnEnd.style.color = dark ?
+            '#e2e8f0' : getVal('endbtntext', '#475569');
         btnEnd.style.borderRadius = btnrad + 'px';
         btnEnd.style.border = dark ?
             '1px solid rgba(148,163,184,0.24)' :
             '1px solid rgba(15,23,42,0.14)';
+    };
+
+    /**
+     * Apply values map to controls.
+     *
+     * @param {Object} map
+     */
+    const applyValues = (map) => {
+        Object.keys(map).forEach((name) => {
+            const real = mInput(name);
+            const bound = document.querySelector(`[data-bind="${name}"]`);
+            const picker = document.querySelector(`[data-color="${name}"]`);
+            if (real) {
+                real.value = map[name];
+                real.dispatchEvent(new Event('change', {bubbles: true}));
+            }
+            if (bound) {
+                bound.value = map[name];
+            }
+            if (picker) {
+                picker.value = normHex(map[name], '#6366f1');
+            }
+        });
+        renderPreview();
+        playPreviewAnim();
     };
 
     /**

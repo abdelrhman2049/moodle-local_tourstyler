@@ -75,12 +75,11 @@ export const init = (cfg = {}) => {
         }
         const html = document.documentElement;
         const body = document.body;
-        if (
-            html.getAttribute('data-bs-theme') === 'dark' ||
+        const hasDarkClass = html.getAttribute('data-bs-theme') === 'dark' ||
             html.classList.contains('dark') ||
             (body && (body.getAttribute('data-bs-theme') === 'dark' ||
-                body.classList.contains('dark-mode')))
-        ) {
+                body.classList.contains('dark-mode')));
+        if (hasDarkClass) {
             return true;
         }
         return window.matchMedia &&
@@ -145,13 +144,12 @@ export const init = (cfg = {}) => {
         const stack = document.elementsFromPoint(cx, cy);
         clearTargetHighlights();
         for (const candidate of stack) {
-            if (
-                !candidate ||
+            const isIgnored = !candidate ||
                 candidate === document.body ||
                 candidate === document.documentElement ||
                 candidate.getAttribute('data-flexitour') ||
-                candidate.closest('[data-role="flexitour-step"]')
-            ) {
+                candidate.closest('[data-role="flexitour-step"]');
+            if (isIgnored) {
                 continue;
             }
             const cRect = candidate.getBoundingClientRect();
@@ -166,7 +164,108 @@ export const init = (cfg = {}) => {
     };
 
     /**
-     * Enhance tour steps with custom styles and animations.
+     * Apply custom CSS variables to step.
+     *
+     * @param {HTMLElement} step
+     * @param {Object} ov
+     */
+    const applyStepVariables = (step, ov) => {
+        const setOrRemove = (prop, val) => {
+            if (val) {
+                step.style.setProperty(prop, val);
+            } else {
+                step.style.removeProperty(prop);
+            }
+        };
+        setOrRemove('--lx-tour-primary', ov.primarycolor);
+        setOrRemove('--lx-tour-header-bg', ov.headerbg);
+        setOrRemove('--lx-tour-dark-header-bg', ov.headerbg);
+        setOrRemove('--lx-tour-title-color', ov.titlecolor);
+        document.documentElement.style.setProperty(
+            '--lx-spotlight-color',
+            ov.spotlightcolor || defaultSpotlight
+        );
+    };
+
+    /**
+     * Apply title and body animations to step.
+     *
+     * @param {HTMLElement} step
+     * @param {HTMLElement|null} titleEl
+     * @param {Object} ov
+     */
+    const applyStepAnimations = (step, titleEl, ov) => {
+        const effectiveAnim = ov.titleanim || defaultTitleAnim;
+        const titleMap = {
+            fade_up: 'lxTourFadeUp 0.45s ease both',
+            blur_in: 'lxTourBlurIn 0.5s ease both',
+            none: 'none',
+        };
+        if (titleEl) {
+            if (effectiveAnim === 'typing') {
+                runTypewriter(titleEl);
+            } else if (titleMap[effectiveAnim]) {
+                titleEl.style.animation = titleMap[effectiveAnim];
+            }
+        }
+
+        const bodyEl = step.querySelector('.lx-tour-body');
+        const bodyMap = {
+            fade_up: 'lxTourFadeUp 0.45s ease 0.14s both',
+            blur_in: 'lxTourBlurIn 0.52s ease 0.14s both',
+            slide_in: 'lxTourSlideIn 0.45s ease 0.14s both',
+            none: 'none',
+        };
+        if (bodyEl && ov.bodyanim && bodyMap[ov.bodyanim]) {
+            bodyEl.style.animation = bodyMap[ov.bodyanim];
+        }
+    };
+
+    /**
+     * Enhance single tour step element.
+     *
+     * @param {HTMLElement} step
+     * @param {boolean} dark
+     */
+    const enhanceSingleStep = (step, dark) => {
+        step.classList.toggle('lx-mode-dark', dark);
+
+        const titleEl = step.querySelector('.lx-tour-title');
+        const rawTitle = titleEl ?
+            (titleEl.dataset.lxOriginalTitle ||
+                titleEl.textContent || '').trim() : '';
+        const ov = findOverrideByTitle(rawTitle) || {};
+        const effectiveIcon = ov.icon || defaultIconClass;
+
+        applyStepVariables(step, ov);
+
+        const iconWrap = step.querySelector('.lx-tour-icon');
+        if (iconWrap && iconWrap.dataset.lxIconApplied !== effectiveIcon) {
+            iconWrap.innerHTML =
+                `<i class="${effectiveIcon}" aria-hidden="true"></i>`;
+            iconWrap.dataset.lxIconApplied = effectiveIcon;
+        }
+
+        applyStepAnimations(step, titleEl, ov);
+
+        const nextBtn = step.querySelector('.lx-tour-btn-next');
+        if (nextBtn && !nextBtn.querySelector('.lx-step-badge')) {
+            const txt = nextBtn.textContent || '';
+            const match = txt.match(/\((\d+)\s*\/\s*(\d+)\)/);
+            if (match) {
+                const label = txt.replace(match[0], '').trim();
+                nextBtn.innerHTML =
+                    `<span>${label}</span>` +
+                    `<span class="lx-step-badge">` +
+                    `${match[1]} / ${match[2]}</span>`;
+            }
+        }
+
+        highlightClosestTarget();
+    };
+
+    /**
+     * Enhance all active tour steps.
      */
     const enhanceTourSteps = () => {
         const dark = isDarkActive();
@@ -190,104 +289,7 @@ export const init = (cfg = {}) => {
             return;
         }
 
-        steps.forEach((step) => {
-            step.classList.toggle('lx-mode-dark', dark);
-
-            const titleEl = step.querySelector('.lx-tour-title');
-            const rawTitle = titleEl ?
-                (titleEl.dataset.lxOriginalTitle ||
-                    titleEl.textContent || '').trim() : '';
-            const ov = findOverrideByTitle(rawTitle) || {};
-
-            const effectiveIcon = ov.icon || defaultIconClass;
-            const effectiveAnim = ov.titleanim || defaultTitleAnim;
-
-            if (ov.primarycolor) {
-                step.style.setProperty('--lx-tour-primary', ov.primarycolor);
-            } else {
-                step.style.removeProperty('--lx-tour-primary');
-            }
-
-            if (ov.headerbg) {
-                step.style.setProperty('--lx-tour-header-bg', ov.headerbg);
-                step.style.setProperty(
-                    '--lx-tour-dark-header-bg',
-                    ov.headerbg
-                );
-            } else {
-                step.style.removeProperty('--lx-tour-header-bg');
-                step.style.removeProperty('--lx-tour-dark-header-bg');
-            }
-
-            if (ov.titlecolor) {
-                step.style.setProperty(
-                    '--lx-tour-title-color',
-                    ov.titlecolor
-                );
-            } else {
-                step.style.removeProperty('--lx-tour-title-color');
-            }
-
-            document.documentElement.style.setProperty(
-                '--lx-spotlight-color',
-                ov.spotlightcolor || defaultSpotlight
-            );
-
-            const iconWrap = step.querySelector('.lx-tour-icon');
-            if (
-                iconWrap &&
-                iconWrap.dataset.lxIconApplied !== effectiveIcon
-            ) {
-                iconWrap.innerHTML =
-                    `<i class="${effectiveIcon}" aria-hidden="true"></i>`;
-                iconWrap.dataset.lxIconApplied = effectiveIcon;
-            }
-
-            if (titleEl) {
-                if (effectiveAnim === 'typing') {
-                    runTypewriter(titleEl);
-                } else if (effectiveAnim === 'fade_up') {
-                    titleEl.style.animation =
-                        'lxTourFadeUp 0.45s ease both';
-                } else if (effectiveAnim === 'blur_in') {
-                    titleEl.style.animation =
-                        'lxTourBlurIn 0.5s ease both';
-                } else if (effectiveAnim === 'none') {
-                    titleEl.style.animation = 'none';
-                }
-            }
-
-            const bodyEl = step.querySelector('.lx-tour-body');
-            if (bodyEl && ov.bodyanim) {
-                if (ov.bodyanim === 'fade_up') {
-                    bodyEl.style.animation =
-                        'lxTourFadeUp 0.45s ease 0.14s both';
-                } else if (ov.bodyanim === 'blur_in') {
-                    bodyEl.style.animation =
-                        'lxTourBlurIn 0.52s ease 0.14s both';
-                } else if (ov.bodyanim === 'slide_in') {
-                    bodyEl.style.animation =
-                        'lxTourSlideIn 0.45s ease 0.14s both';
-                } else if (ov.bodyanim === 'none') {
-                    bodyEl.style.animation = 'none';
-                }
-            }
-
-            const nextBtn = step.querySelector('.lx-tour-btn-next');
-            if (nextBtn && !nextBtn.querySelector('.lx-step-badge')) {
-                const txt = nextBtn.textContent || '';
-                const match = txt.match(/\((\d+)\s*\/\s*(\d+)\)/);
-                if (match) {
-                    const label = txt.replace(match[0], '').trim();
-                    nextBtn.innerHTML =
-                        `<span>${label}</span>` +
-                        `<span class="lx-step-badge">` +
-                        `${match[1]} / ${match[2]}</span>`;
-                }
-            }
-
-            highlightClosestTarget();
-        });
+        steps.forEach((step) => enhanceSingleStep(step, dark));
     };
 
     if (!window.__lxTourCloseBound) {

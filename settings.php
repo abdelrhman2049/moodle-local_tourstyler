@@ -56,12 +56,25 @@ if ($hassiteconfig) {
     if ($isdeployed) {
         $alertclass = 'alert alert-success';
         $statushtml = html_writer::tag('p', get_string('status_deployed', 'local_tourstyler', $activetheme));
-        $buttonshtml = html_writer::link($deployurl, get_string('redeploybtn', 'local_tourstyler'), ['class' => 'btn btn-secondary me-2']) .
-            html_writer::link($removeurl, get_string('removebtn', 'local_tourstyler'), ['class' => 'btn btn-outline-danger']);
+        $redeploybtn = html_writer::link(
+            $deployurl,
+            get_string('redeploybtn', 'local_tourstyler'),
+            ['class' => 'btn btn-secondary me-2']
+        );
+        $removebtn = html_writer::link(
+            $removeurl,
+            get_string('removebtn', 'local_tourstyler'),
+            ['class' => 'btn btn-outline-danger']
+        );
+        $buttonshtml = $redeploybtn . $removebtn;
     } else {
         $alertclass = 'alert alert-warning';
         $statushtml = html_writer::tag('p', get_string('status_not_deployed', 'local_tourstyler', $activetheme));
-        $buttonshtml = html_writer::link($deployurl, get_string('deploybtn', 'local_tourstyler'), ['class' => 'btn btn-primary']);
+        $buttonshtml = html_writer::link(
+            $deployurl,
+            get_string('deploybtn', 'local_tourstyler'),
+            ['class' => 'btn btn-primary']
+        );
     }
 
     $deployhtml = html_writer::div($statushtml . $buttonshtml, $alertclass);
@@ -84,7 +97,8 @@ if ($hassiteconfig) {
     };
 
     $toursdata = [];
-    if ($DB->get_manager()->table_exists('tool_usertours_tours') && $DB->get_manager()->table_exists('tool_usertours_steps')) {
+    $dbman = $DB->get_manager();
+    if ($dbman->table_exists('tool_usertours_tours') && $dbman->table_exists('tool_usertours_steps')) {
         $tours = $DB->get_records('tool_usertours_tours', null, 'sortorder ASC, id ASC');
         $allsteps = $DB->get_records('tool_usertours_steps', null, 'tourid ASC, sortorder ASC, id ASC');
         $stepsbytour = [];
@@ -112,136 +126,415 @@ if ($hassiteconfig) {
         }
     }
     $toursjson = htmlspecialchars(json_encode($toursdata), ENT_QUOTES, 'UTF-8');
+    $tourscount = count($toursdata);
 
-    $studiohtml = '<div class="lx-studio-shell" data-tours="' . $toursjson . '">'
-        . '<div class="lx-studio-header-tabs">'
-        . '<button type="button" class="lx-header-tab active" data-mode="global"><i class="fa fa-sliders"></i> Global Studio</button>'
-        . '<button type="button" class="lx-header-tab" data-mode="tours"><i class="fa fa-map-signs"></i> Tours &amp; Steps <span class="lx-tab-count">' . count($toursdata) . '</span></button>'
-        . '</div>'
-        . '<div class="lx-studio-wrap">'
-        . '<div class="lx-studio-controls">'
-        . '<div class="lx-mode-pane active" data-mode-pane="global">'
-        . '<div class="lx-studio-quickbar">'
-        . '<button type="button" id="lx-match-platform" class="lx-quick-btn"><i class="fa fa-paint-brush"></i> Match Platform Colors</button>'
-        . '<button type="button" id="lx-reset-defaults" class="lx-quick-btn lx-btn-reset"><i class="fa fa-undo"></i> Reset to Default</button>'
-        . '</div>'
-        . '<div class="lx-studio-tabs">'
-        . '<button type="button" class="lx-studio-tab active" data-tab="card">Card</button>'
-        . '<button type="button" class="lx-studio-tab" data-tab="buttons">Buttons</button>'
-        . '<button type="button" class="lx-studio-tab" data-tab="accent">Accent</button>'
-        . '<button type="button" class="lx-studio-tab" data-tab="backdrop">Backdrop &amp; Focus</button>'
-        . '<button type="button" class="lx-studio-tab" data-tab="anim">Animations</button>'
-        . '</div>'
-        . '<div class="lx-studio-pane active" data-pane="card">'
-        . '<div class="lx-ctrl-grid">'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Color Mode</label><select class="lx-select" data-bind="colormode"><option value="auto">Auto (System / Theme)</option><option value="light">Light Mode</option><option value="dark">Dark Mode</option></select></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Design Preset</label><select class="lx-select" data-bind="preset"><option value="saas">Modern SaaS</option><option value="glass">Glassmorphism</option><option value="minimal">Minimal Clean</option></select></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Primary &amp; Icon</label><div class="lx-color-row"><input type="color" data-color="primarycolor"><input type="text" data-bind="primarycolor"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Header Background</label><div class="lx-color-row"><input type="color" data-color="headerbg"><input type="text" data-bind="headerbg"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Title Text Color</label><div class="lx-color-row"><input type="color" data-color="titlecolor"><input type="text" data-bind="titlecolor"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Body Text Color</label><div class="lx-color-row"><input type="color" data-color="textcolor"><input type="text" data-bind="textcolor"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Footer Background</label><div class="lx-color-row"><input type="color" data-color="footerbg"><input type="text" data-bind="footerbg"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Card Radius <span class="lx-ctrl-val" id="lx-val-borderradius">20px</span></label><input type="range" class="lx-range" min="0" max="48" data-bind="borderradius"></div>'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Header FontAwesome Icon</label><input type="text" class="lx-input-text" data-bind="headericon" placeholder="fa fa-star">'
-        . '<div class="lx-icon-chips">'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-star"><i class="fa fa-star"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-rocket"><i class="fa fa-rocket"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-lightbulb-o"><i class="fa fa-lightbulb-o"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-graduation-cap"><i class="fa fa-graduation-cap"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-compass"><i class="fa fa-compass"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-bell"><i class="fa fa-bell"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-pick-icon="fa fa-magic"><i class="fa fa-magic"></i></button>'
-        . '</div></div>'
-        . '</div></div>'
-        . '<div class="lx-studio-pane" data-pane="buttons">'
-        . '<div class="lx-ctrl-grid">'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Next Button BG</label><div class="lx-color-row"><input type="color" data-color="nextbtnbg"><input type="text" data-bind="nextbtnbg"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Next Button Text</label><div class="lx-color-row"><input type="color" data-color="nextbtntext"><input type="text" data-bind="nextbtntext"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Skip/End Button BG</label><div class="lx-color-row"><input type="color" data-color="endbtnbg"><input type="text" data-bind="endbtnbg"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Skip/End Button Text</label><div class="lx-color-row"><input type="color" data-color="endbtntext"><input type="text" data-bind="endbtntext"></div></div>'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Button Radius <span class="lx-ctrl-val" id="lx-val-btnradius">10px</span></label><input type="range" class="lx-range" min="0" max="30" data-bind="btnradius"></div>'
-        . '</div></div>'
-        . '<div class="lx-studio-pane" data-pane="accent">'
-        . '<div class="lx-ctrl-grid">'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Accent Bar Style</label><select class="lx-select" data-bind="accentstyle"><option value="gradient_animated">Animated Gradient</option><option value="gradient_static">Static Gradient</option><option value="solid">Solid Color</option><option value="hidden">Hidden</option></select></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Gradient Color 1</label><div class="lx-color-row"><input type="color" data-color="accentcolor1"><input type="text" data-bind="accentcolor1"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Gradient Color 2</label><div class="lx-color-row"><input type="color" data-color="accentcolor2"><input type="text" data-bind="accentcolor2"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Gradient Color 3</label><div class="lx-color-row"><input type="color" data-color="accentcolor3"><input type="text" data-bind="accentcolor3"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Bar Height <span class="lx-ctrl-val" id="lx-val-accentheight">5px</span></label><input type="range" class="lx-range" min="0" max="20" data-bind="accentheight"></div>'
-        . '</div></div>'
-        . '<div class="lx-studio-pane" data-pane="backdrop">'
-        . '<div class="lx-ctrl-grid">'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Backdrop Mode</label><select class="lx-select" data-bind="backdropmode"><option value="blur">Blurred Overlay</option><option value="solid">Solid Color Overlay</option><option value="transparent">Transparent (Page Visible)</option><option value="none">Hidden (No Backdrop)</option></select></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Spotlight Ring Color</label><div class="lx-color-row"><input type="color" data-color="spotlightcolor"><input type="text" data-bind="spotlightcolor"></div></div>'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Backdrop Color</label><div class="lx-color-row"><input type="color" data-color="backdropcolor"><input type="text" data-bind="backdropcolor"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Opacity <span class="lx-ctrl-val" id="lx-val-backdropopacity">58%</span></label><input type="range" class="lx-range" min="0" max="95" data-bind="backdropopacity"></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Blur Amount <span class="lx-ctrl-val" id="lx-val-backdropblur">4px</span></label><input type="range" class="lx-range" min="0" max="20" data-bind="backdropblur"></div>'
-        . '</div></div>'
-        . '<div class="lx-studio-pane" data-pane="anim">'
-        . '<div class="lx-ctrl-grid">'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Header Title Animation</label><select class="lx-select" data-bind="titleanim"><option value="typing">Typewriter (Typing Effect)</option><option value="fade_up">Fade &amp; Slide Up</option><option value="blur_in">Blur Reveal</option><option value="none">None</option></select></div>'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Typing Speed <span class="lx-ctrl-val" id="lx-val-typingspeed">35ms</span></label><input type="range" class="lx-range" min="15" max="90" data-bind="typingspeed"></div>'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Body Text Animation</label><select class="lx-select" data-bind="bodyanim"><option value="fade_up">Smooth Fade Up</option><option value="blur_in">Blur Reveal</option><option value="slide_in">Slide In</option><option value="none">None</option></select></div>'
-        . '</div></div>'
-        . '</div>'
-        . '<div class="lx-mode-pane" data-mode-pane="tours">'
-        . '<div class="lx-tours-filter">'
-        . '<button type="button" class="lx-filter-btn active" data-tour-filter="all">All</button>'
-        . '<button type="button" class="lx-filter-btn" data-tour-filter="active">Active</button>'
-        . '<button type="button" class="lx-filter-btn" data-tour-filter="inactive">Inactive</button>'
-        . '</div>'
-        . '<div id="lx-tours-list" class="lx-tours-list"></div>'
-        . '<div id="lx-steps-section" class="lx-steps-section" style="display:none;">'
-        . '<div class="lx-section-title">Tour Steps</div>'
-        . '<div id="lx-steps-list" class="lx-steps-list"></div>'
-        . '</div>'
-        . '<div id="lx-step-editor" class="lx-step-editor" style="display:none;">'
-        . '<div class="lx-step-editor-head">'
-        . '<span id="lx-step-editor-label" class="lx-section-title">Customize Step</span>'
-        . '<button type="button" id="lx-step-reset" class="lx-quick-btn lx-btn-reset"><i class="fa fa-undo"></i> Reset Step</button>'
-        . '</div>'
-        . '<div class="lx-ctrl-grid">'
-        . '<div class="lx-ctrl-group full"><label class="lx-ctrl-label">Step FontAwesome Icon</label><input type="text" class="lx-input-text" data-step-bind="icon" placeholder="Inherit Global Icon">'
-        . '<div class="lx-icon-chips">'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-rocket"><i class="fa fa-rocket"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-search"><i class="fa fa-search"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-cog"><i class="fa fa-cog"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-graduation-cap"><i class="fa fa-graduation-cap"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-compass"><i class="fa fa-compass"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-check-circle"><i class="fa fa-check-circle"></i></button>'
-        . '<button type="button" class="lx-icon-chip" data-step-icon="fa fa-info-circle"><i class="fa fa-info-circle"></i></button>'
-        . '</div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Primary &amp; Icon Color</label><div class="lx-color-row"><input type="color" data-step-color="primarycolor"><input type="text" data-step-bind="primarycolor" placeholder="Inherit"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Header Background</label><div class="lx-color-row"><input type="color" data-step-color="headerbg"><input type="text" data-step-bind="headerbg" placeholder="Inherit"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Title Text Color</label><div class="lx-color-row"><input type="color" data-step-color="titlecolor"><input type="text" data-step-bind="titlecolor" placeholder="Inherit"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Spotlight Ring Color</label><div class="lx-color-row"><input type="color" data-step-color="spotlightcolor"><input type="text" data-step-bind="spotlightcolor" placeholder="Inherit"></div></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Title Animation</label><select class="lx-select" data-step-bind="titleanim"><option value="">Inherit Global</option><option value="typing">Typewriter</option><option value="fade_up">Fade &amp; Slide Up</option><option value="blur_in">Blur Reveal</option><option value="none">None</option></select></div>'
-        . '<div class="lx-ctrl-group"><label class="lx-ctrl-label">Body Animation</label><select class="lx-select" data-step-bind="bodyanim"><option value="">Inherit Global</option><option value="fade_up">Smooth Fade Up</option><option value="blur_in">Blur Reveal</option><option value="slide_in">Slide In</option><option value="none">None</option></select></div>'
-        . '</div></div>'
-        . '</div>'
-        . '</div>'
-        . '<div class="lx-studio-stage">'
-        . '<div id="lx-stage-backdrop" class="lx-stage-backdrop"></div>'
-        . '<div class="lx-stage-bar"><span id="lx-stage-badge" class="lx-stage-badge">Live Interactive Preview</span><button type="button" id="lx-replay-anim" class="lx-replay-btn"><i class="fa fa-refresh"></i> Replay</button></div>'
-        . '<div id="lx-stage-target-mock" class="lx-stage-target-mock"><i class="fa fa-crosshairs"></i> Highlighted Target Element</div>'
-        . '<div id="lx-prev-card" class="lx-prev-card">'
-        . '<div id="lx-prev-accent"></div>'
-        . '<div id="lx-prev-header" class="lx-prev-header">'
-        . '<div class="lx-prev-title-wrap">'
-        . '<span id="lx-prev-icon-box" class="lx-prev-icon"><i id="lx-prev-icon" class="fa fa-star"></i></span>'
-        . '<h5 id="lx-prev-title" class="lx-prev-title">Welcome to Your Course</h5>'
-        . '</div>'
-        . '<button type="button" id="lx-prev-close" class="lx-prev-close"><i class="fa fa-times"></i></button>'
-        . '</div>'
-        . '<div id="lx-prev-body" class="lx-prev-body">Adjust colors, match platform branding, or customize individual tour steps live.</div>'
-        . '<div id="lx-prev-footer" class="lx-prev-footer">'
-        . '<button type="button" id="lx-prev-btn-end" class="lx-prev-btn">Skip tour</button>'
-        . '<button type="button" id="lx-prev-btn-next" class="lx-prev-btn"><span>Next</span><span id="lx-prev-badge" class="lx-prev-badge">2 / 3</span></button>'
-        . '</div>'
-        . '</div>'
-        . '</div>'
-        . '</div>'
-        . '</div>';
+    $studiohtml = <<<HTML
+<div class="lx-studio-shell" data-tours="{$toursjson}">
+    <div class="lx-studio-header-tabs">
+        <button type="button" class="lx-header-tab active" data-mode="global">
+            <i class="fa fa-sliders"></i> Global Studio
+        </button>
+        <button type="button" class="lx-header-tab" data-mode="tours">
+            <i class="fa fa-map-signs"></i> Tours &amp; Steps
+            <span class="lx-tab-count">{$tourscount}</span>
+        </button>
+    </div>
+    <div class="lx-studio-wrap">
+        <div class="lx-studio-controls">
+            <div class="lx-mode-pane active" data-mode-pane="global">
+                <div class="lx-studio-quickbar">
+                    <button type="button" id="lx-match-platform" class="lx-quick-btn">
+                        <i class="fa fa-paint-brush"></i> Match Platform Colors
+                    </button>
+                    <button type="button" id="lx-reset-defaults" class="lx-quick-btn lx-btn-reset">
+                        <i class="fa fa-undo"></i> Reset to Default
+                    </button>
+                </div>
+                <div class="lx-studio-tabs">
+                    <button type="button" class="lx-studio-tab active" data-tab="card">Card</button>
+                    <button type="button" class="lx-studio-tab" data-tab="buttons">Buttons</button>
+                    <button type="button" class="lx-studio-tab" data-tab="accent">Accent</button>
+                    <button type="button" class="lx-studio-tab" data-tab="backdrop">Backdrop &amp; Focus</button>
+                    <button type="button" class="lx-studio-tab" data-tab="anim">Animations</button>
+                </div>
+                <div class="lx-studio-pane active" data-pane="card">
+                    <div class="lx-ctrl-grid">
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Color Mode</label>
+                            <select class="lx-select" data-bind="colormode">
+                                <option value="auto">Auto (System / Theme)</option>
+                                <option value="light">Light Mode</option>
+                                <option value="dark">Dark Mode</option>
+                            </select>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Design Preset</label>
+                            <select class="lx-select" data-bind="preset">
+                                <option value="saas">Modern SaaS</option>
+                                <option value="glass">Glassmorphism</option>
+                                <option value="minimal">Minimal Clean</option>
+                            </select>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Primary &amp; Icon</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="primarycolor">
+                                <input type="text" data-bind="primarycolor">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Header Background</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="headerbg">
+                                <input type="text" data-bind="headerbg">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Title Text Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="titlecolor">
+                                <input type="text" data-bind="titlecolor">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Body Text Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="textcolor">
+                                <input type="text" data-bind="textcolor">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Footer Background</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="footerbg">
+                                <input type="text" data-bind="footerbg">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">
+                                Card Radius
+                                <span class="lx-ctrl-val" id="lx-val-borderradius">20px</span>
+                            </label>
+                            <input type="range" class="lx-range" min="0" max="48" data-bind="borderradius">
+                        </div>
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">Header FontAwesome Icon</label>
+                            <input type="text" class="lx-input-text" data-bind="headericon" placeholder="fa fa-star">
+                            <div class="lx-icon-chips">
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-star">
+                                    <i class="fa fa-star"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-rocket">
+                                    <i class="fa fa-rocket"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-lightbulb-o">
+                                    <i class="fa fa-lightbulb-o"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-graduation-cap">
+                                    <i class="fa fa-graduation-cap"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-compass">
+                                    <i class="fa fa-compass"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-bell">
+                                    <i class="fa fa-bell"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-pick-icon="fa fa-magic">
+                                    <i class="fa fa-magic"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lx-studio-pane" data-pane="buttons">
+                    <div class="lx-ctrl-grid">
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Next Button BG</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="nextbtnbg">
+                                <input type="text" data-bind="nextbtnbg">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Next Button Text</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="nextbtntext">
+                                <input type="text" data-bind="nextbtntext">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Skip/End Button BG</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="endbtnbg">
+                                <input type="text" data-bind="endbtnbg">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Skip/End Button Text</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="endbtntext">
+                                <input type="text" data-bind="endbtntext">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">
+                                Button Radius
+                                <span class="lx-ctrl-val" id="lx-val-btnradius">10px</span>
+                            </label>
+                            <input type="range" class="lx-range" min="0" max="30" data-bind="btnradius">
+                        </div>
+                    </div>
+                </div>
+                <div class="lx-studio-pane" data-pane="accent">
+                    <div class="lx-ctrl-grid">
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">Accent Bar Style</label>
+                            <select class="lx-select" data-bind="accentstyle">
+                                <option value="gradient_animated">Animated Gradient</option>
+                                <option value="gradient_static">Static Gradient</option>
+                                <option value="solid">Solid Color</option>
+                                <option value="hidden">Hidden</option>
+                            </select>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Gradient Color 1</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="accentcolor1">
+                                <input type="text" data-bind="accentcolor1">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Gradient Color 2</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="accentcolor2">
+                                <input type="text" data-bind="accentcolor2">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Gradient Color 3</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="accentcolor3">
+                                <input type="text" data-bind="accentcolor3">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">
+                                Bar Height
+                                <span class="lx-ctrl-val" id="lx-val-accentheight">5px</span>
+                            </label>
+                            <input type="range" class="lx-range" min="0" max="20" data-bind="accentheight">
+                        </div>
+                    </div>
+                </div>
+                <div class="lx-studio-pane" data-pane="backdrop">
+                    <div class="lx-ctrl-grid">
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Backdrop Mode</label>
+                            <select class="lx-select" data-bind="backdropmode">
+                                <option value="blur">Blurred Overlay</option>
+                                <option value="solid">Solid Color Overlay</option>
+                                <option value="transparent">Transparent (Page Visible)</option>
+                                <option value="none">Hidden (No Backdrop)</option>
+                            </select>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Spotlight Ring Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="spotlightcolor">
+                                <input type="text" data-bind="spotlightcolor">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">Backdrop Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-color="backdropcolor">
+                                <input type="text" data-bind="backdropcolor">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">
+                                Opacity
+                                <span class="lx-ctrl-val" id="lx-val-backdropopacity">58%</span>
+                            </label>
+                            <input type="range" class="lx-range" min="0" max="95" data-bind="backdropopacity">
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">
+                                Blur Amount
+                                <span class="lx-ctrl-val" id="lx-val-backdropblur">4px</span>
+                            </label>
+                            <input type="range" class="lx-range" min="0" max="20" data-bind="backdropblur">
+                        </div>
+                    </div>
+                </div>
+                <div class="lx-studio-pane" data-pane="anim">
+                    <div class="lx-ctrl-grid">
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">Header Title Animation</label>
+                            <select class="lx-select" data-bind="titleanim">
+                                <option value="typing">Typewriter (Typing Effect)</option>
+                                <option value="fade_up">Fade &amp; Slide Up</option>
+                                <option value="blur_in">Blur Reveal</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">
+                                Typing Speed
+                                <span class="lx-ctrl-val" id="lx-val-typingspeed">35ms</span>
+                            </label>
+                            <input type="range" class="lx-range" min="15" max="90" data-bind="typingspeed">
+                        </div>
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">Body Text Animation</label>
+                            <select class="lx-select" data-bind="bodyanim">
+                                <option value="fade_up">Smooth Fade Up</option>
+                                <option value="blur_in">Blur Reveal</option>
+                                <option value="slide_in">Slide In</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="lx-mode-pane" data-mode-pane="tours">
+                <div class="lx-tours-filter">
+                    <button type="button" class="lx-filter-btn active" data-tour-filter="all">All</button>
+                    <button type="button" class="lx-filter-btn" data-tour-filter="active">Active</button>
+                    <button type="button" class="lx-filter-btn" data-tour-filter="inactive">Inactive</button>
+                </div>
+                <div id="lx-tours-list" class="lx-tours-list"></div>
+                <div id="lx-steps-section" class="lx-steps-section" style="display:none;">
+                    <div class="lx-section-title">Tour Steps</div>
+                    <div id="lx-steps-list" class="lx-steps-list"></div>
+                </div>
+                <div id="lx-step-editor" class="lx-step-editor" style="display:none;">
+                    <div class="lx-step-editor-head">
+                        <span id="lx-step-editor-label" class="lx-section-title">Customize Step</span>
+                        <button type="button" id="lx-step-reset" class="lx-quick-btn lx-btn-reset">
+                            <i class="fa fa-undo"></i> Reset Step
+                        </button>
+                    </div>
+                    <div class="lx-ctrl-grid">
+                        <div class="lx-ctrl-group full">
+                            <label class="lx-ctrl-label">Step FontAwesome Icon</label>
+                            <input type="text" class="lx-input-text" data-step-bind="icon"
+                                placeholder="Inherit Global Icon">
+                            <div class="lx-icon-chips">
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-rocket">
+                                    <i class="fa fa-rocket"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-search">
+                                    <i class="fa fa-search"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-cog">
+                                    <i class="fa fa-cog"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-graduation-cap">
+                                    <i class="fa fa-graduation-cap"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-compass">
+                                    <i class="fa fa-compass"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-check-circle">
+                                    <i class="fa fa-check-circle"></i>
+                                </button>
+                                <button type="button" class="lx-icon-chip" data-step-icon="fa fa-info-circle">
+                                    <i class="fa fa-info-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Primary &amp; Icon Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-step-color="primarycolor">
+                                <input type="text" data-step-bind="primarycolor" placeholder="Inherit">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Header Background</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-step-color="headerbg">
+                                <input type="text" data-step-bind="headerbg" placeholder="Inherit">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Title Text Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-step-color="titlecolor">
+                                <input type="text" data-step-bind="titlecolor" placeholder="Inherit">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Spotlight Ring Color</label>
+                            <div class="lx-color-row">
+                                <input type="color" data-step-color="spotlightcolor">
+                                <input type="text" data-step-bind="spotlightcolor" placeholder="Inherit">
+                            </div>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Title Animation</label>
+                            <select class="lx-select" data-step-bind="titleanim">
+                                <option value="">Inherit Global</option>
+                                <option value="typing">Typewriter</option>
+                                <option value="fade_up">Fade &amp; Slide Up</option>
+                                <option value="blur_in">Blur Reveal</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                        <div class="lx-ctrl-group">
+                            <label class="lx-ctrl-label">Body Animation</label>
+                            <select class="lx-select" data-step-bind="bodyanim">
+                                <option value="">Inherit Global</option>
+                                <option value="fade_up">Smooth Fade Up</option>
+                                <option value="blur_in">Blur Reveal</option>
+                                <option value="slide_in">Slide In</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="lx-studio-stage">
+            <div id="lx-stage-backdrop" class="lx-stage-backdrop"></div>
+            <div class="lx-stage-bar">
+                <span id="lx-stage-badge" class="lx-stage-badge">Live Interactive Preview</span>
+                <button type="button" id="lx-replay-anim" class="lx-replay-btn">
+                    <i class="fa fa-refresh"></i> Replay
+                </button>
+            </div>
+            <div id="lx-stage-target-mock" class="lx-stage-target-mock">
+                <i class="fa fa-crosshairs"></i> Highlighted Target Element
+            </div>
+            <div id="lx-prev-card" class="lx-prev-card">
+                <div id="lx-prev-accent"></div>
+                <div id="lx-prev-header" class="lx-prev-header">
+                    <div class="lx-prev-title-wrap">
+                        <span id="lx-prev-icon-box" class="lx-prev-icon">
+                            <i id="lx-prev-icon" class="fa fa-star"></i>
+                        </span>
+                        <h5 id="lx-prev-title" class="lx-prev-title">Welcome to Your Course</h5>
+                    </div>
+                    <button type="button" id="lx-prev-close" class="lx-prev-close">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div id="lx-prev-body" class="lx-prev-body">
+                    Adjust colors, match platform branding, or customize individual tour steps live.
+                </div>
+                <div id="lx-prev-footer" class="lx-prev-footer">
+                    <button type="button" id="lx-prev-btn-end" class="lx-prev-btn">Skip tour</button>
+                    <button type="button" id="lx-prev-btn-next" class="lx-prev-btn">
+                        <span>Next</span>
+                        <span id="lx-prev-badge" class="lx-prev-badge">2 / 3</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+HTML;
 
     $settings->add(new admin_setting_heading(
         'local_tourstyler/previewheading',
@@ -499,34 +792,49 @@ if ($hassiteconfig) {
         PARAM_RAW
     ));
 
-    $docshtml = '<div class="card border-0 shadow-sm mt-2 mb-3">'
-        . '<div class="card-header bg-light fw-bold">' . get_string('cssdocs_title', 'local_tourstyler') . '</div>'
-        . '<div class="card-body p-3">'
-        . '<p class="text-muted small mb-2">' . get_string('cssdocs_intro', 'local_tourstyler') . '</p>'
-        . '<div class="table-responsive">'
-        . '<table class="table table-sm table-bordered align-middle mb-3 small">'
-        . '<thead class="table-light"><tr><th>Selector</th><th>Target Element</th></tr></thead>'
-        . '<tbody>'
-        . '<tr><td><code>.lx-tour-card</code></td><td>Main tour modal card container</td></tr>'
-        . '<tr><td><code>.lx-tour-accent</code></td><td>Top accent bar (gradient / solid bar)</td></tr>'
-        . '<tr><td><code>.lx-tour-header</code></td><td>Header wrapper</td></tr>'
-        . '<tr><td><code>.lx-tour-icon</code></td><td>Header icon badge</td></tr>'
-        . '<tr><td><code>.lx-tour-title</code></td><td>Tour step title text</td></tr>'
-        . '<tr><td><code>.lx-tour-close</code></td><td>Top-right close button</td></tr>'
-        . '<tr><td><code>.lx-tour-body</code></td><td>Step description content area</td></tr>'
-        . '<tr><td><code>.lx-tour-footer</code></td><td>Footer buttons container</td></tr>'
-        . '<tr><td><code>.lx-tour-btn-next</code></td><td>Next step primary button</td></tr>'
-        . '<tr><td><code>.lx-tour-btn-end</code></td><td>End tour button</td></tr>'
-        . '<tr><td><code>.lx-step-badge</code></td><td>Step counter pill badge (e.g. 2 / 3)</td></tr>'
-        . '<tr><td><code>.lx-mode-dark</code></td><td>Applied to tour step when Dark Mode is active</td></tr>'
-        . '<tr><td><code>.lx-tour-target-active</code></td><td>Highlighted target element on page</td></tr>'
-        . '<tr><td><code>div[data-flexitour="backdrop"]</code></td><td>Page overlay backdrop</td></tr>'
-        . '<tr><td><code>div[data-flexitour="step-background"]</code></td><td>Highlighted target element spotlight</td></tr>'
-        . '</tbody></table></div>'
-        . '<div class="small fw-semibold mb-1">CSS Variables (<code>:root</code>)</div>'
-        . '<div class="bg-light border rounded p-2 small font-monospace">'
-        . '--lx-tour-primary | --lx-tour-header-bg | --lx-tour-title-color | --lx-tour-footer-bg | --lx-tour-text | --lx-tour-radius | --lx-tour-next-bg | --lx-tour-next-text | --lx-tour-end-bg | --lx-tour-end-text | --lx-tour-btn-radius | --lx-spotlight-color | --lx-backdrop-bg | --lx-backdrop-filter'
-        . '</div></div></div>';
+    $docstitle = get_string('cssdocs_title', 'local_tourstyler');
+    $docsintro = get_string('cssdocs_intro', 'local_tourstyler');
+
+    $docshtml = <<<HTML
+<div class="card border-0 shadow-sm mt-2 mb-3">
+    <div class="card-header bg-light fw-bold">{$docstitle}</div>
+    <div class="card-body p-3">
+        <p class="text-muted small mb-2">{$docsintro}</p>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-3 small">
+                <thead class="table-light">
+                    <tr><th>Selector</th><th>Target Element</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>.lx-tour-card</code></td><td>Main tour modal card container</td></tr>
+                    <tr><td><code>.lx-tour-accent</code></td><td>Top accent bar (gradient / solid bar)</td></tr>
+                    <tr><td><code>.lx-tour-header</code></td><td>Header wrapper</td></tr>
+                    <tr><td><code>.lx-tour-icon</code></td><td>Header icon badge</td></tr>
+                    <tr><td><code>.lx-tour-title</code></td><td>Tour step title text</td></tr>
+                    <tr><td><code>.lx-tour-close</code></td><td>Top-right close button</td></tr>
+                    <tr><td><code>.lx-tour-body</code></td><td>Step description content area</td></tr>
+                    <tr><td><code>.lx-tour-footer</code></td><td>Footer buttons container</td></tr>
+                    <tr><td><code>.lx-tour-btn-next</code></td><td>Next step primary button</td></tr>
+                    <tr><td><code>.lx-tour-btn-end</code></td><td>End tour button</td></tr>
+                    <tr><td><code>.lx-step-badge</code></td><td>Step counter pill badge (e.g. 2 / 3)</td></tr>
+                    <tr><td><code>.lx-mode-dark</code></td><td>Applied to tour step when Dark Mode is active</td></tr>
+                    <tr><td><code>.lx-tour-target-active</code></td><td>Highlighted target element on page</td></tr>
+                    <tr><td><code>div[data-flexitour="backdrop"]</code></td><td>Page overlay backdrop</td></tr>
+                    <tr><td><code>div[data-flexitour="step-background"]</code></td><td>Highlighted target spotlight</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="small fw-semibold mb-1">CSS Variables (<code>:root</code>)</div>
+        <div class="bg-light border rounded p-2 small font-monospace">
+            --lx-tour-primary | --lx-tour-header-bg | --lx-tour-title-color |
+            --lx-tour-footer-bg | --lx-tour-text | --lx-tour-radius |
+            --lx-tour-next-bg | --lx-tour-next-text | --lx-tour-end-bg |
+            --lx-tour-end-text | --lx-tour-btn-radius | --lx-spotlight-color |
+            --lx-backdrop-bg | --lx-backdrop-filter
+        </div>
+    </div>
+</div>
+HTML;
 
     $settings->add(new admin_setting_heading(
         'local_tourstyler/customcssheading',
