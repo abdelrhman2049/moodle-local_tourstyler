@@ -21,7 +21,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-export const init = () => {
+export const init = (strings = {}) => {
     const defaults = {
         colormode: 'auto',
         preset: 'saas',
@@ -54,10 +54,6 @@ export const init = () => {
 
     const fields = Object.keys(defaults);
     let prevTimer = null;
-    const defaultSampleTitle = 'Welcome to Your Course';
-    const defaultSampleBody =
-        'Adjust colors, match platform branding, ' +
-        'or customize individual tour steps live.';
     let toursData = [];
     let stepOverrides = {};
     let activeMode = 'global';
@@ -66,6 +62,14 @@ export const init = () => {
     let selectedStep = null;
     let selectedStepIndex = 0;
     let selectedTourTotal = 0;
+
+    /**
+     * Get localized string by key.
+     *
+     * @param {string} key
+     * @return {string}
+     */
+    const getStr = (key) => strings[key] || '';
 
     /**
      * Get real input element by name.
@@ -233,7 +237,8 @@ export const init = () => {
         }
 
         const activeTitle = (activeMode === 'tours' && selectedStep) ?
-            (selectedStep.rawtitle || 'Untitled Step') : defaultSampleTitle;
+            (selectedStep.rawtitle || getStr('untitled_step')) :
+            getStr('sample_title');
 
         if (prevTimer) {
             clearInterval(prevTimer);
@@ -429,20 +434,21 @@ export const init = () => {
         if (activeMode === 'tours' && selectedStep) {
             if (stageBadge) {
                 stageBadge.textContent =
-                    `Step ${selectedStepIndex + 1} of ` +
-                    `${selectedTourTotal} Preview`;
+                    `${getStr('step_word')} ${selectedStepIndex + 1} ` +
+                    `${getStr('of_word')} ${selectedTourTotal} ` +
+                    `${getStr('preview_word')}`;
             }
             prevBody.innerHTML = selectedStep.content ||
-                '<em>Empty step content</em>';
+                `<em>${getStr('empty_step_content')}</em>`;
             if (prevBadge) {
                 prevBadge.textContent =
                     `${selectedStepIndex + 1} / ${selectedTourTotal}`;
             }
         } else {
             if (stageBadge) {
-                stageBadge.textContent = 'Live Interactive Preview';
+                stageBadge.textContent = getStr('previewheading');
             }
-            prevBody.textContent = defaultSampleBody;
+            prevBody.textContent = getStr('sample_body');
             if (prevBadge) {
                 prevBadge.textContent = '2 / 3';
             }
@@ -541,7 +547,8 @@ export const init = () => {
 
         if (filtered.length === 0) {
             container.innerHTML =
-                '<div class="lx-empty-state">No tours found.</div>';
+                `<div class="lx-empty-state">` +
+                `${getStr('no_tours_found')}</div>`;
             return;
         }
 
@@ -550,14 +557,17 @@ export const init = () => {
             item.type = 'button';
             item.className =
                 'lx-tour-item' + (selectedTourId === tour.id ? ' active' : '');
+            const statusText = tour.enabled ?
+                getStr('status_active') : getStr('status_inactive');
             item.innerHTML =
                 '<div class="lx-tour-item-main">' +
                 '<span class="lx-tour-name"></span>' +
-                `<span class="lx-tour-meta">${tour.steps.length} steps</span>` +
+                `<span class="lx-tour-meta">` +
+                `${tour.steps.length} ${getStr('steps_label')}</span>` +
                 '</div>' +
                 `<span class="lx-status-pill ` +
                 `${tour.enabled ? 'is-active' : 'is-inactive'}">` +
-                `${tour.enabled ? 'Active' : 'Inactive'}</span>`;
+                `${statusText}</span>`;
             item.querySelector('.lx-tour-name').textContent = tour.name;
             item.addEventListener('click', () => {
                 selectedTourId = tour.id;
@@ -585,8 +595,8 @@ export const init = () => {
         const label = document.getElementById('lx-step-editor-label');
         if (label) {
             label.textContent =
-                `Step ${selectedStepIndex + 1}: ` +
-                `${selectedStep.rawtitle || 'Untitled'}`;
+                `${getStr('step_word')} ${selectedStepIndex + 1}: ` +
+                `${selectedStep.rawtitle || getStr('untitled_step')}`;
         }
 
         const ov = stepOverrides[String(selectedStep.id)] || {};
@@ -631,7 +641,8 @@ export const init = () => {
 
         if (!tour.steps || tour.steps.length === 0) {
             list.innerHTML =
-                '<div class="lx-empty-state">No steps in this tour.</div>';
+                `<div class="lx-empty-state">` +
+                `${getStr('no_steps_in_tour')}</div>`;
             populateStepEditor();
             return;
         }
@@ -645,14 +656,15 @@ export const init = () => {
             btn.className =
                 'lx-step-item' +
                 (selectedStep && selectedStep.id === step.id ? ' active' : '');
+            const dotHtml = hasCustom ?
+                `<span class="lx-custom-dot" ` +
+                `title="${getStr('step_customized')}"></span>` : '';
             btn.innerHTML =
                 `<span class="lx-step-num">${index + 1}</span>` +
                 '<span class="lx-step-title-txt"></span>' +
-                (hasCustom ?
-                    '<span class="lx-custom-dot" title="Customized"></span>' :
-                    '');
+                dotHtml;
             btn.querySelector('.lx-step-title-txt').textContent =
-                step.rawtitle || 'Untitled Step';
+                step.rawtitle || getStr('untitled_step');
             btn.addEventListener('click', () => {
                 selectedStep = step;
                 selectedStepIndex = index;

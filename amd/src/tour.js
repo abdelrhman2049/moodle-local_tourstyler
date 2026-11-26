@@ -21,6 +21,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+let closeListenerBound = false;
+
 export const init = (cfg = {}) => {
     const defaultIconClass = cfg.headericon || 'fa fa-star';
     const defaultTitleAnim = cfg.titleanim || 'typing';
@@ -292,8 +294,8 @@ export const init = (cfg = {}) => {
         steps.forEach((step) => enhanceSingleStep(step, dark));
     };
 
-    if (!window.__lxTourCloseBound) {
-        window.__lxTourCloseBound = true;
+    if (!closeListenerBound) {
+        closeListenerBound = true;
         document.addEventListener('click', (e) => {
             const closeBtn = e.target.closest('[data-lx-action="close"]');
             if (closeBtn) {
