@@ -1,5 +1,28 @@
-(function() {
-    var defaults = {
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Live interactive studio controller for User Tour Styler settings.
+ *
+ * @module     local_tourstyler/studio
+ * @copyright  2026 AbdelrhmanBoghdady support@learn-ix.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+export const init = () => {
+    const defaults = {
         colormode: 'auto',
         preset: 'saas',
         primarycolor: '#6366f1',
@@ -26,108 +49,173 @@
         backdropblur: '4',
         titleanim: 'typing',
         typingspeed: '35',
-        bodyanim: 'fade_up'
+        bodyanim: 'fade_up',
     };
 
-    var fields = Object.keys(defaults);
-    var prevTimer = null;
-    var defaultSampleTitle = 'Welcome to Your Course';
-    var defaultSampleBody = 'Adjust colors, match platform branding, or customize individual tour steps live.';
-    var toursData = [];
-    var stepOverrides = {};
-    var activeMode = 'global';
-    var activeFilter = 'all';
-    var selectedTourId = null;
-    var selectedStep = null;
-    var selectedStepIndex = 0;
-    var selectedTourTotal = 0;
+    const fields = Object.keys(defaults);
+    let prevTimer = null;
+    const defaultSampleTitle = 'Welcome to Your Course';
+    const defaultSampleBody =
+        'Adjust colors, match platform branding, ' +
+        'or customize individual tour steps live.';
+    let toursData = [];
+    let stepOverrides = {};
+    let activeMode = 'global';
+    let activeFilter = 'all';
+    let selectedTourId = null;
+    let selectedStep = null;
+    let selectedStepIndex = 0;
+    let selectedTourTotal = 0;
 
-    function mInput(name) {
+    /**
+     * Get real input element by name.
+     *
+     * @param {string} name
+     * @return {HTMLElement|null}
+     */
+    const mInput = (name) => {
         return document.getElementById('id_s_local_tourstyler_' + name);
-    }
+    };
 
-    function getVal(name, fallback) {
-        var el = mInput(name);
+    /**
+     * Get value from input or fallback.
+     *
+     * @param {string} name
+     * @param {string} fallback
+     * @return {string}
+     */
+    const getVal = (name, fallback) => {
+        const el = mInput(name);
         return el && el.value !== '' ? el.value : fallback;
-    }
+    };
 
-    function normHex(value, fallback) {
+    /**
+     * Normalize hex color.
+     *
+     * @param {string} value
+     * @param {string} fallback
+     * @return {string}
+     */
+    const normHex = (value, fallback) => {
         return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
-    }
+    };
 
-    function rgbToHex(rgb) {
-        var match = (rgb || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    /**
+     * Convert rgb color string to hex.
+     *
+     * @param {string} rgb
+     * @return {string|null}
+     */
+    const rgbToHex = (rgb) => {
+        const match = (rgb || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
         if (!match) {
             return null;
         }
-        var hex = function(x) {
+        const hex = (x) => {
             return ('0' + parseInt(x, 10).toString(16)).slice(-2);
         };
         return '#' + hex(match[1]) + hex(match[2]) + hex(match[3]);
-    }
+    };
 
-    function detectPlatformBrandColor() {
-        var rootStyles = getComputedStyle(document.documentElement);
-        var vars = ['--primary', '--bs-primary', '--brand-primary', '--theme-primary'];
-        for (var i = 0; i < vars.length; i++) {
-            var v = rootStyles.getPropertyValue(vars[i]).trim();
+    /**
+     * Detect platform brand color from DOM.
+     *
+     * @return {string}
+     */
+    const detectPlatformBrandColor = () => {
+        const rootStyles = getComputedStyle(document.documentElement);
+        const vars = [
+            '--primary',
+            '--bs-primary',
+            '--brand-primary',
+            '--theme-primary',
+        ];
+        for (let i = 0; i < vars.length; i++) {
+            const v = rootStyles.getPropertyValue(vars[i]).trim();
             if (/^#[0-9a-fA-F]{6}$/.test(v)) {
                 return v;
             }
-            var parsed = rgbToHex(v);
+            const parsed = rgbToHex(v);
             if (parsed) {
                 return parsed;
             }
         }
-        var probe = document.querySelector('.btn-primary, .nav-link.active');
+        const probe = document.querySelector('.btn-primary, .nav-link.active');
         if (probe) {
-            var bg = getComputedStyle(probe).backgroundColor;
-            var hex = rgbToHex(bg);
+            const bg = getComputedStyle(probe).backgroundColor;
+            const hex = rgbToHex(bg);
             if (hex && hex !== '#000000' && hex !== '#ffffff') {
                 return hex;
             }
         }
         return '#6366f1';
-    }
+    };
 
-    function hexToRgba(hex, alpha) {
-        var clean = normHex(hex, '#0f172a').substring(1);
-        var r = parseInt(clean.substring(0, 2), 16);
-        var g = parseInt(clean.substring(2, 4), 16);
-        var b = parseInt(clean.substring(4, 6), 16);
-        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-    }
+    /**
+     * Convert hex to rgba.
+     *
+     * @param {string} hex
+     * @param {number} alpha
+     * @return {string}
+     */
+    const hexToRgba = (hex, alpha) => {
+        const clean = normHex(hex, '#0f172a').substring(1);
+        const r = parseInt(clean.substring(0, 2), 16);
+        const g = parseInt(clean.substring(2, 4), 16);
+        const b = parseInt(clean.substring(4, 6), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+    };
 
-    function isPreviewDark(mode) {
+    /**
+     * Check if preview dark mode is active.
+     *
+     * @param {string} mode
+     * @return {boolean}
+     */
+    const isPreviewDark = (mode) => {
         if (mode === 'dark') {
             return true;
         }
         if (mode === 'light') {
             return false;
         }
-        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
+        return window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+    };
 
-    function saveStepOverridesToInput() {
-        var real = mInput('stepoverrides');
+    /**
+     * Save step overrides to hidden input.
+     */
+    const saveStepOverridesToInput = () => {
+        const real = mInput('stepoverrides');
         if (real) {
             real.value = JSON.stringify(stepOverrides);
             real.dispatchEvent(new Event('change', {bubbles: true}));
         }
-    }
+    };
 
-    function getCurrentStepOverride() {
+    /**
+     * Get current step override object.
+     *
+     * @return {Object}
+     */
+    const getCurrentStepOverride = () => {
         if (activeMode !== 'tours' || !selectedStep) {
             return {};
         }
         return stepOverrides[String(selectedStep.id)] || {};
-    }
+    };
 
-    function applyValues(map) {
-        Object.keys(map).forEach(function(name) {
-            var real = mInput(name);
-            var bound = document.querySelector('[data-bind="' + name + '"]');
-            var picker = document.querySelector('[data-color="' + name + '"]');
+    /**
+     * Apply values map to controls.
+     *
+     * @param {Object} map
+     */
+    const applyValues = (map) => {
+        Object.keys(map).forEach((name) => {
+            const real = mInput(name);
+            const bound = document.querySelector(`[data-bind="${name}"]`);
+            const picker = document.querySelector(`[data-color="${name}"]`);
             if (real) {
                 real.value = map[name];
                 real.dispatchEvent(new Event('change', {bubbles: true}));
@@ -141,20 +229,27 @@
         });
         renderPreview();
         playPreviewAnim();
-    }
+    };
 
-    function playPreviewAnim() {
-        var ov = getCurrentStepOverride();
-        var tAnim = ov.titleanim || getVal('titleanim', 'typing');
-        var bAnim = ov.bodyanim || getVal('bodyanim', 'fade_up');
-        var speed = Math.max(15, Math.min(90, parseInt(getVal('typingspeed', '35'), 10) || 35));
-        var titleEl = document.getElementById('lx-prev-title');
-        var bodyEl = document.getElementById('lx-prev-body');
+    /**
+     * Play preview title and body animations.
+     */
+    const playPreviewAnim = () => {
+        const ov = getCurrentStepOverride();
+        const tAnim = ov.titleanim || getVal('titleanim', 'typing');
+        const bAnim = ov.bodyanim || getVal('bodyanim', 'fade_up');
+        const speed = Math.max(
+            15,
+            Math.min(90, parseInt(getVal('typingspeed', '35'), 10) || 35)
+        );
+        const titleEl = document.getElementById('lx-prev-title');
+        const bodyEl = document.getElementById('lx-prev-body');
         if (!titleEl || !bodyEl) {
             return;
         }
 
-        var activeTitle = (activeMode === 'tours' && selectedStep) ? (selectedStep.rawtitle || 'Untitled Step') : defaultSampleTitle;
+        const activeTitle = (activeMode === 'tours' && selectedStep) ?
+            (selectedStep.rawtitle || 'Untitled Step') : defaultSampleTitle;
 
         if (prevTimer) {
             clearInterval(prevTimer);
@@ -169,8 +264,8 @@
         if (tAnim === 'typing') {
             titleEl.textContent = '';
             titleEl.classList.add('lx-prev-cursor');
-            var idx = 0;
-            prevTimer = setInterval(function() {
+            let idx = 0;
+            prevTimer = setInterval(() => {
                 idx++;
                 titleEl.textContent = activeTitle.slice(0, idx);
                 if (idx >= activeTitle.length) {
@@ -195,64 +290,89 @@
         } else if (bAnim === 'slide_in') {
             bodyEl.style.animation = 'lxTourSlideIn 0.45s ease 0.12s both';
         }
-    }
+    };
 
-    function renderPreview() {
-        var card = document.getElementById('lx-prev-card');
+    /**
+     * Render live preview card and stage.
+     */
+    const renderPreview = () => {
+        const card = document.getElementById('lx-prev-card');
         if (!card) {
             return;
         }
 
-        var ov = getCurrentStepOverride();
-        var colorMode = getVal('colormode', 'auto');
-        var dark = isPreviewDark(colorMode);
-        var preset = getVal('preset', 'saas');
+        const ov = getCurrentStepOverride();
+        const colorMode = getVal('colormode', 'auto');
+        const dark = isPreviewDark(colorMode);
+        const preset = getVal('preset', 'saas');
 
-        var primary = ov.primarycolor || getVal('primarycolor', '#6366f1');
-        var headerbg = ov.headerbg || getVal('headerbg', '#ffffff');
-        var titlecolor = ov.titlecolor || getVal('titlecolor', '#0f172a');
-        var footerbg = getVal('footerbg', '#f8fafc');
-        var textcolor = getVal('textcolor', '#475569');
-        var radius = Math.max(0, Math.min(48, parseInt(getVal('borderradius', '20'), 10) || 0));
+        const primary = ov.primarycolor || getVal('primarycolor', '#6366f1');
+        const headerbg = ov.headerbg || getVal('headerbg', '#ffffff');
+        const titlecolor = ov.titlecolor || getVal('titlecolor', '#0f172a');
+        const footerbg = getVal('footerbg', '#f8fafc');
+        const textcolor = getVal('textcolor', '#475569');
+        const radius = Math.max(
+            0,
+            Math.min(48, parseInt(getVal('borderradius', '20'), 10) || 0)
+        );
 
-        var accentstyle = getVal('accentstyle', 'gradient_animated');
-        var c1 = getVal('accentcolor1', '#6366f1');
-        var c2 = getVal('accentcolor2', '#8b5cf6');
-        var c3 = getVal('accentcolor3', '#0ea5e9');
-        var ah = Math.max(0, Math.min(20, parseInt(getVal('accentheight', '5'), 10) || 0));
-        var spotColor = ov.spotlightcolor || getVal('spotlightcolor', '#6366f1');
+        const accentstyle = getVal('accentstyle', 'gradient_animated');
+        const c1 = getVal('accentcolor1', '#6366f1');
+        const c2 = getVal('accentcolor2', '#8b5cf6');
+        const c3 = getVal('accentcolor3', '#0ea5e9');
+        const ah = Math.max(
+            0,
+            Math.min(20, parseInt(getVal('accentheight', '5'), 10) || 0)
+        );
+        const spotColor = ov.spotlightcolor ||
+            getVal('spotlightcolor', '#6366f1');
 
-        var iconcls = ov.icon || getVal('headericon', 'fa fa-star');
-        var nextbg = getVal('nextbtnbg', '#6366f1');
-        var nexttxt = getVal('nextbtntext', '#ffffff');
-        var endbg = getVal('endbtnbg', '#ffffff');
-        var endtxt = getVal('endbtntext', '#475569');
-        var btnrad = Math.max(0, Math.min(30, parseInt(getVal('btnradius', '10'), 10) || 0));
+        const iconcls = ov.icon || getVal('headericon', 'fa fa-star');
+        const nextbg = getVal('nextbtnbg', '#6366f1');
+        const nexttxt = getVal('nextbtntext', '#ffffff');
+        const endbg = getVal('endbtnbg', '#ffffff');
+        const endtxt = getVal('endbtntext', '#475569');
+        const btnrad = Math.max(
+            0,
+            Math.min(30, parseInt(getVal('btnradius', '10'), 10) || 0)
+        );
 
-        var bdMode = getVal('backdropmode', 'blur');
-        var bdColor = getVal('backdropcolor', '#0f172a');
-        var bdOpacity = Math.max(0, Math.min(95, parseInt(getVal('backdropopacity', '58'), 10) || 0));
-        var bdBlur = Math.max(0, Math.min(20, parseInt(getVal('backdropblur', '4'), 10) || 0));
-        var speed = Math.max(15, Math.min(90, parseInt(getVal('typingspeed', '35'), 10) || 35));
+        const bdMode = getVal('backdropmode', 'blur');
+        const bdColor = getVal('backdropcolor', '#0f172a');
+        const bdOpacity = Math.max(
+            0,
+            Math.min(95, parseInt(getVal('backdropopacity', '58'), 10) || 0)
+        );
+        const bdBlur = Math.max(
+            0,
+            Math.min(20, parseInt(getVal('backdropblur', '4'), 10) || 0)
+        );
 
-        document.getElementById('lx-val-borderradius').textContent = radius + 'px';
-        document.getElementById('lx-val-btnradius').textContent = btnrad + 'px';
-        document.getElementById('lx-val-accentheight').textContent = ah + 'px';
-        document.getElementById('lx-val-backdropopacity').textContent = bdOpacity + '%';
-        document.getElementById('lx-val-backdropblur').textContent = bdBlur + 'px';
-        document.getElementById('lx-val-typingspeed').textContent = speed + 'ms';
+        document.getElementById('lx-val-borderradius').textContent =
+            radius + 'px';
+        document.getElementById('lx-val-btnradius').textContent =
+            btnrad + 'px';
+        document.getElementById('lx-val-accentheight').textContent =
+            ah + 'px';
+        document.getElementById('lx-val-backdropopacity').textContent =
+            bdOpacity + '%';
+        document.getElementById('lx-val-backdropblur').textContent =
+            bdBlur + 'px';
 
-        var stageBadge = document.getElementById('lx-stage-badge');
-        var prevBody = document.getElementById('lx-prev-body');
-        var prevBadge = document.getElementById('lx-prev-badge');
+        const stageBadge = document.getElementById('lx-stage-badge');
+        const prevBody = document.getElementById('lx-prev-body');
+        const prevBadge = document.getElementById('lx-prev-badge');
 
         if (activeMode === 'tours' && selectedStep) {
             if (stageBadge) {
-                stageBadge.textContent = 'Step ' + (selectedStepIndex + 1) + ' of ' + selectedTourTotal + ' Preview';
+                stageBadge.textContent =
+                    `Step ${selectedStepIndex + 1} of ${selectedTourTotal} Preview`;
             }
-            prevBody.innerHTML = selectedStep.content || '<em>Empty step content</em>';
+            prevBody.innerHTML = selectedStep.content ||
+                '<em>Empty step content</em>';
             if (prevBadge) {
-                prevBadge.textContent = (selectedStepIndex + 1) + ' / ' + selectedTourTotal;
+                prevBadge.textContent =
+                    `${selectedStepIndex + 1} / ${selectedTourTotal}`;
             }
         } else {
             if (stageBadge) {
@@ -264,15 +384,16 @@
             }
         }
 
-        var targetMock = document.getElementById('lx-stage-target-mock');
+        const targetMock = document.getElementById('lx-stage-target-mock');
         if (targetMock) {
             targetMock.style.background = dark ? '#1e293b' : '#ffffff';
             targetMock.style.color = dark ? '#f8fafc' : '#0f172a';
             targetMock.style.border = '2px solid ' + spotColor;
-            targetMock.style.boxShadow = '0 0 0 4px ' + hexToRgba(spotColor, 0.28);
+            targetMock.style.boxShadow =
+                '0 0 0 4px ' + hexToRgba(spotColor, 0.28);
         }
 
-        var stageBd = document.getElementById('lx-stage-backdrop');
+        const stageBd = document.getElementById('lx-stage-backdrop');
         if (stageBd) {
             if (bdMode === 'none' || bdMode === 'transparent') {
                 stageBd.style.background = 'transparent';
@@ -284,35 +405,40 @@
                 stageBd.style.webkitBackdropFilter = 'none';
             } else {
                 stageBd.style.background = hexToRgba(bdColor, bdOpacity / 100);
-                stageBd.style.backdropFilter = 'blur(' + bdBlur + 'px)';
-                stageBd.style.webkitBackdropFilter = 'blur(' + bdBlur + 'px)';
+                stageBd.style.backdropFilter = `blur(${bdBlur}px)`;
+                stageBd.style.webkitBackdropFilter = `blur(${bdBlur}px)`;
             }
         }
 
         card.style.borderRadius = radius + 'px';
         if (dark) {
-            card.style.background = preset === 'glass' ? 'rgba(15, 23, 42, 0.8)' : 'rgba(15, 23, 42, 0.95)';
-            card.style.backdropFilter = preset === 'minimal' ? 'none' : 'blur(18px)';
+            card.style.background = preset === 'glass' ?
+                'rgba(15, 23, 42, 0.8)' : 'rgba(15, 23, 42, 0.95)';
+            card.style.backdropFilter = preset === 'minimal' ?
+                'none' : 'blur(18px)';
             card.style.borderColor = 'rgba(148, 163, 184, 0.2)';
             card.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.6)';
         } else if (preset === 'glass') {
             card.style.background = 'rgba(255, 255, 255, 0.78)';
             card.style.backdropFilter = 'blur(20px)';
             card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
-            card.style.boxShadow = '0 24px 48px -12px rgba(15, 23, 42, 0.22)';
+            card.style.boxShadow =
+                '0 24px 48px -12px rgba(15, 23, 42, 0.22)';
         } else if (preset === 'minimal') {
             card.style.background = '#ffffff';
             card.style.backdropFilter = 'none';
             card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
-            card.style.boxShadow = '0 10px 25px rgba(15, 23, 42, 0.12)';
+            card.style.boxShadow =
+                '0 10px 25px rgba(15, 23, 42, 0.12)';
         } else {
             card.style.background = 'rgba(255, 255, 255, 0.96)';
             card.style.backdropFilter = 'blur(16px)';
             card.style.borderColor = 'rgba(15, 23, 42, 0.08)';
-            card.style.boxShadow = '0 25px 50px -12px rgba(15, 23, 42, 0.25)';
+            card.style.boxShadow =
+                '0 25px 50px -12px rgba(15, 23, 42, 0.25)';
         }
 
-        var acc = document.getElementById('lx-prev-accent');
+        const acc = document.getElementById('lx-prev-accent');
         if (accentstyle === 'hidden' || ah === 0) {
             acc.style.display = 'none';
         } else if (accentstyle === 'solid') {
@@ -324,49 +450,61 @@
         } else if (accentstyle === 'gradient_static') {
             acc.style.display = 'block';
             acc.style.height = ah + 'px';
-            acc.style.backgroundImage = 'linear-gradient(90deg,' + c1 + ',' + c2 + ',' + c3 + ')';
+            acc.style.backgroundImage =
+                `linear-gradient(90deg,${c1},${c2},${c3})`;
             acc.style.backgroundSize = '100% 100%';
             acc.style.animation = 'none';
         } else {
             acc.style.display = 'block';
             acc.style.height = ah + 'px';
-            acc.style.backgroundImage = 'linear-gradient(90deg,' + c1 + ',' + c2 + ',' + c3 + ',' + c1 + ')';
+            acc.style.backgroundImage =
+                `linear-gradient(90deg,${c1},${c2},${c3},${c1})`;
             acc.style.backgroundSize = '300% 100%';
             acc.style.animation = 'lxTourGradientFlow 3s ease infinite';
         }
 
-        document.getElementById('lx-prev-header').style.background = (dark && !ov.headerbg) ? '#1e293b' : headerbg;
-        document.getElementById('lx-prev-title').style.color = (dark && !ov.titlecolor) ? '#f8fafc' : titlecolor;
-        document.getElementById('lx-prev-close').style.color = (dark && !ov.titlecolor) ? '#f8fafc' : titlecolor;
+        document.getElementById('lx-prev-header').style.background =
+            (dark && !ov.headerbg) ? '#1e293b' : headerbg;
+        document.getElementById('lx-prev-title').style.color =
+            (dark && !ov.titlecolor) ? '#f8fafc' : titlecolor;
+        document.getElementById('lx-prev-close').style.color =
+            (dark && !ov.titlecolor) ? '#f8fafc' : titlecolor;
 
-        var iconBox = document.getElementById('lx-prev-icon-box');
+        const iconBox = document.getElementById('lx-prev-icon-box');
         iconBox.style.color = primary;
-        iconBox.style.background = 'color-mix(in srgb, ' + primary + ' 15%, transparent)';
+        iconBox.style.background =
+            `color-mix(in srgb, ${primary} 15%, transparent)`;
         document.getElementById('lx-prev-icon').className = iconcls;
 
         prevBody.style.color = dark ? '#e2e8f0' : textcolor;
-        document.getElementById('lx-prev-footer').style.background = dark ? '#0b1120' : footerbg;
+        document.getElementById('lx-prev-footer').style.background =
+            dark ? '#0b1120' : footerbg;
 
-        var btnNext = document.getElementById('lx-prev-btn-next');
+        const btnNext = document.getElementById('lx-prev-btn-next');
         btnNext.style.background = nextbg;
         btnNext.style.color = nexttxt;
         btnNext.style.borderRadius = btnrad + 'px';
 
-        var btnEnd = document.getElementById('lx-prev-btn-end');
+        const btnEnd = document.getElementById('lx-prev-btn-end');
         btnEnd.style.background = dark ? '#1e293b' : endbg;
         btnEnd.style.color = dark ? '#e2e8f0' : endtxt;
         btnEnd.style.borderRadius = btnrad + 'px';
-        btnEnd.style.border = dark ? '1px solid rgba(148,163,184,0.24)' : '1px solid rgba(15,23,42,0.14)';
-    }
+        btnEnd.style.border = dark ?
+            '1px solid rgba(148,163,184,0.24)' :
+            '1px solid rgba(15,23,42,0.14)';
+    };
 
-    function renderToursList() {
-        var container = document.getElementById('lx-tours-list');
+    /**
+     * Render list of tours in settings tab.
+     */
+    const renderToursList = () => {
+        const container = document.getElementById('lx-tours-list');
         if (!container) {
             return;
         }
         container.innerHTML = '';
 
-        var filtered = toursData.filter(function(t) {
+        const filtered = toursData.filter((t) => {
             if (activeFilter === 'active') {
                 return t.enabled;
             }
@@ -377,23 +515,26 @@
         });
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="lx-empty-state">No tours found in this filter.</div>';
+            container.innerHTML =
+                '<div class="lx-empty-state">No tours found.</div>';
             return;
         }
 
-        filtered.forEach(function(tour) {
-            var item = document.createElement('button');
+        filtered.forEach((tour) => {
+            const item = document.createElement('button');
             item.type = 'button';
-            item.className = 'lx-tour-item' + (selectedTourId === tour.id ? ' active' : '');
-            item.innerHTML = '<div class="lx-tour-item-main">'
-                + '<span class="lx-tour-name"></span>'
-                + '<span class="lx-tour-meta">' + tour.steps.length + ' steps</span>'
-                + '</div>'
-                + '<span class="lx-status-pill ' + (tour.enabled ? 'is-active' : 'is-inactive') + '">'
-                + (tour.enabled ? 'Active' : 'Inactive')
-                + '</span>';
+            item.className =
+                'lx-tour-item' + (selectedTourId === tour.id ? ' active' : '');
+            item.innerHTML =
+                '<div class="lx-tour-item-main">' +
+                '<span class="lx-tour-name"></span>' +
+                `<span class="lx-tour-meta">${tour.steps.length} steps</span>` +
+                '</div>' +
+                `<span class="lx-status-pill ` +
+                `${tour.enabled ? 'is-active' : 'is-inactive'}">` +
+                `${tour.enabled ? 'Active' : 'Inactive'}</span>`;
             item.querySelector('.lx-tour-name').textContent = tour.name;
-            item.addEventListener('click', function() {
+            item.addEventListener('click', () => {
                 selectedTourId = tour.id;
                 selectedStep = null;
                 renderToursList();
@@ -401,10 +542,13 @@
             });
             container.appendChild(item);
         });
-    }
+    };
 
-    function populateStepEditor() {
-        var editor = document.getElementById('lx-step-editor');
+    /**
+     * Populate step editor fields.
+     */
+    const populateStepEditor = () => {
+        const editor = document.getElementById('lx-step-editor');
         if (!editor || !selectedStep) {
             if (editor) {
                 editor.style.display = 'none';
@@ -413,27 +557,46 @@
         }
 
         editor.style.display = 'flex';
-        var label = document.getElementById('lx-step-editor-label');
+        const label = document.getElementById('lx-step-editor-label');
         if (label) {
-            label.textContent = 'Step ' + (selectedStepIndex + 1) + ': ' + (selectedStep.rawtitle || 'Untitled');
+            label.textContent =
+                `Step ${selectedStepIndex + 1}: ` +
+                `${selectedStep.rawtitle || 'Untitled'}`;
         }
 
-        var ov = stepOverrides[String(selectedStep.id)] || {};
-        ['icon', 'primarycolor', 'headerbg', 'titlecolor', 'spotlightcolor', 'titleanim', 'bodyanim'].forEach(function(key) {
-            var input = document.querySelector('[data-step-bind="' + key + '"]');
-            var picker = document.querySelector('[data-step-color="' + key + '"]');
+        const ov = stepOverrides[String(selectedStep.id)] || {};
+        const props = [
+            'icon',
+            'primarycolor',
+            'headerbg',
+            'titlecolor',
+            'spotlightcolor',
+            'titleanim',
+            'bodyanim',
+        ];
+        props.forEach((key) => {
+            const input = document.querySelector(`[data-step-bind="${key}"]`);
+            const picker = document.querySelector(`[data-step-color="${key}"]`);
             if (input) {
                 input.value = ov[key] || '';
             }
             if (picker) {
-                picker.value = normHex(ov[key] || getVal(key, '#6366f1'), '#6366f1');
+                picker.value = normHex(
+                    ov[key] || getVal(key, '#6366f1'),
+                    '#6366f1'
+                );
             }
         });
-    }
+    };
 
-    function renderStepsList(tour) {
-        var section = document.getElementById('lx-steps-section');
-        var list = document.getElementById('lx-steps-list');
+    /**
+     * Render list of steps for selected tour.
+     *
+     * @param {Object} tour
+     */
+    const renderStepsList = (tour) => {
+        const section = document.getElementById('lx-steps-section');
+        const list = document.getElementById('lx-steps-list');
         if (!section || !list) {
             return;
         }
@@ -442,23 +605,30 @@
         list.innerHTML = '';
 
         if (!tour.steps || tour.steps.length === 0) {
-            list.innerHTML = '<div class="lx-empty-state">This tour has no steps yet.</div>';
+            list.innerHTML =
+                '<div class="lx-empty-state">No steps in this tour.</div>';
             populateStepEditor();
             return;
         }
 
         selectedTourTotal = tour.steps.length;
 
-        tour.steps.forEach(function(step, index) {
-            var hasCustom = !!stepOverrides[String(step.id)];
-            var btn = document.createElement('button');
+        tour.steps.forEach((step, index) => {
+            const hasCustom = !!stepOverrides[String(step.id)];
+            const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'lx-step-item' + (selectedStep && selectedStep.id === step.id ? ' active' : '');
-            btn.innerHTML = '<span class="lx-step-num">' + (index + 1) + '</span>'
-                + '<span class="lx-step-title-txt"></span>'
-                + (hasCustom ? '<span class="lx-custom-dot" title="Customized"></span>' : '');
-            btn.querySelector('.lx-step-title-txt').textContent = step.rawtitle || 'Untitled Step';
-            btn.addEventListener('click', function() {
+            btn.className =
+                'lx-step-item' +
+                (selectedStep && selectedStep.id === step.id ? ' active' : '');
+            btn.innerHTML =
+                `<span class="lx-step-num">${index + 1}</span>` +
+                '<span class="lx-step-title-txt"></span>' +
+                (hasCustom ?
+                    '<span class="lx-custom-dot" title="Customized"></span>' :
+                    '');
+            btn.querySelector('.lx-step-title-txt').textContent =
+                step.rawtitle || 'Untitled Step';
+            btn.addEventListener('click', () => {
                 selectedStep = step;
                 selectedStepIndex = index;
                 renderStepsList(tour);
@@ -477,13 +647,19 @@
             renderPreview();
             playPreviewAnim();
         }
-    }
+    };
 
-    function updateStepField(key, value) {
+    /**
+     * Update specific step override field.
+     *
+     * @param {string} key
+     * @param {string} value
+     */
+    const updateStepField = (key, value) => {
         if (!selectedStep) {
             return;
         }
-        var sid = String(selectedStep.id);
+        const sid = String(selectedStep.id);
         if (!stepOverrides[sid]) {
             stepOverrides[sid] = {title: selectedStep.rawtitle};
         }
@@ -495,7 +671,7 @@
             stepOverrides[sid][key] = value;
         }
 
-        var keys = Object.keys(stepOverrides[sid]).filter(function(k) {
+        const keys = Object.keys(stepOverrides[sid]).filter((k) => {
             return k !== 'title';
         });
         if (keys.length === 0) {
@@ -507,228 +683,232 @@
         if (key === 'titleanim' || key === 'bodyanim') {
             playPreviewAnim();
         }
+    };
+
+    const shell = document.querySelector('.lx-studio-shell');
+    if (!shell) {
+        return;
     }
 
-    function initStudio() {
-        var shell = document.querySelector('.lx-studio-shell');
-        if (!shell) {
+    try {
+        toursData = JSON.parse(shell.getAttribute('data-tours') || '[]');
+    } catch (e) {
+        toursData = [];
+    }
+
+    const realOverrides = mInput('stepoverrides');
+    if (realOverrides) {
+        const ovRow = realOverrides.closest('.form-item');
+        if (ovRow) {
+            ovRow.style.display = 'none';
+        }
+        try {
+            stepOverrides = JSON.parse(realOverrides.value || '{}') || {};
+        } catch (e) {
+            stepOverrides = {};
+        }
+    }
+
+    fields.forEach((name) => {
+        const real = mInput(name);
+        if (!real) {
             return;
         }
-
-        try {
-            toursData = JSON.parse(shell.getAttribute('data-tours') || '[]');
-        } catch (e) {
-            toursData = [];
+        const row = real.closest('.form-item');
+        if (row) {
+            row.style.display = 'none';
         }
 
-        var realOverrides = mInput('stepoverrides');
-        if (realOverrides) {
-            var ovRow = realOverrides.closest('.form-item');
-            if (ovRow) {
-                ovRow.style.display = 'none';
-            }
-            try {
-                stepOverrides = JSON.parse(realOverrides.value || '{}') || {};
-            } catch (e) {
-                stepOverrides = {};
-            }
+        const bound = document.querySelector(`[data-bind="${name}"]`);
+        const colorPicker = document.querySelector(`[data-color="${name}"]`);
+
+        if (bound) {
+            bound.value = real.value;
+            bound.addEventListener('input', () => {
+                real.value = bound.value;
+                if (colorPicker) {
+                    colorPicker.value = normHex(bound.value, colorPicker.value);
+                }
+                real.dispatchEvent(new Event('change', {bubbles: true}));
+                renderPreview();
+                if (
+                    name === 'titleanim' ||
+                    name === 'bodyanim' ||
+                    name === 'typingspeed'
+                ) {
+                    playPreviewAnim();
+                }
+            });
+            bound.addEventListener('change', () => {
+                real.value = bound.value;
+                renderPreview();
+                if (
+                    name === 'titleanim' ||
+                    name === 'bodyanim' ||
+                    name === 'typingspeed'
+                ) {
+                    playPreviewAnim();
+                }
+            });
         }
 
-        fields.forEach(function(name) {
-            var real = mInput(name);
-            if (!real) {
+        if (colorPicker) {
+            colorPicker.value = normHex(real.value, '#6366f1');
+            colorPicker.addEventListener('input', () => {
+                real.value = colorPicker.value;
+                if (bound) {
+                    bound.value = colorPicker.value;
+                }
+                real.dispatchEvent(new Event('change', {bubbles: true}));
+                renderPreview();
+            });
+        }
+    });
+
+    document.querySelectorAll('.lx-header-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            activeMode = btn.dataset.mode;
+            document.querySelectorAll('.lx-header-tab').forEach((b) => {
+                b.classList.remove('active');
+            });
+            document.querySelectorAll('.lx-mode-pane').forEach((p) => {
+                p.classList.remove('active');
+            });
+            btn.classList.add('active');
+            const pane = document.querySelector(
+                `.lx-mode-pane[data-mode-pane="${activeMode}"]`
+            );
+            if (pane) {
+                pane.classList.add('active');
+            }
+            if (activeMode === 'tours') {
+                renderToursList();
+            }
+            renderPreview();
+            playPreviewAnim();
+        });
+    });
+
+    document.querySelectorAll('.lx-filter-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            activeFilter = btn.dataset.tourFilter;
+            document.querySelectorAll('.lx-filter-btn').forEach((b) => {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            renderToursList();
+        });
+    });
+
+    document.querySelectorAll('[data-step-bind]').forEach((input) => {
+        const key = input.getAttribute('data-step-bind');
+        const picker = document.querySelector(`[data-step-color="${key}"]`);
+        input.addEventListener('input', () => {
+            if (picker && /^#[0-9a-fA-F]{6}$/.test(input.value)) {
+                picker.value = input.value;
+            }
+            updateStepField(key, input.value.trim());
+        });
+        input.addEventListener('change', () => {
+            updateStepField(key, input.value.trim());
+        });
+    });
+
+    document.querySelectorAll('[data-step-color]').forEach((picker) => {
+        const key = picker.getAttribute('data-step-color');
+        const input = document.querySelector(`[data-step-bind="${key}"]`);
+        picker.addEventListener('input', () => {
+            if (input) {
+                input.value = picker.value;
+            }
+            updateStepField(key, picker.value);
+        });
+    });
+
+    document.querySelectorAll('[data-step-icon]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const ic = chip.getAttribute('data-step-icon');
+            const input = document.querySelector('[data-step-bind="icon"]');
+            if (input) {
+                input.value = ic;
+            }
+            updateStepField('icon', ic);
+        });
+    });
+
+    const stepResetBtn = document.getElementById('lx-step-reset');
+    if (stepResetBtn) {
+        stepResetBtn.addEventListener('click', () => {
+            if (!selectedStep) {
                 return;
             }
-            var row = real.closest('.form-item');
-            if (row) {
-                row.style.display = 'none';
+            delete stepOverrides[String(selectedStep.id)];
+            saveStepOverridesToInput();
+            populateStepEditor();
+            renderPreview();
+            playPreviewAnim();
+        });
+    }
+
+    document.querySelectorAll('.lx-studio-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.lx-studio-tab').forEach((b) => {
+                b.classList.remove('active');
+            });
+            document.querySelectorAll('.lx-studio-pane').forEach((p) => {
+                p.classList.remove('active');
+            });
+            btn.classList.add('active');
+            const pane = document.querySelector(
+                `.lx-studio-pane[data-pane="${btn.dataset.tab}"]`
+            );
+            if (pane) {
+                pane.classList.add('active');
             }
+        });
+    });
 
-            var bound = document.querySelector('[data-bind="' + name + '"]');
-            var colorPicker = document.querySelector('[data-color="' + name + '"]');
-
+    document.querySelectorAll('[data-pick-icon]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const ic = chip.getAttribute('data-pick-icon');
+            const bound = document.querySelector('[data-bind="headericon"]');
+            const real = mInput('headericon');
             if (bound) {
-                bound.value = real.value;
-                bound.addEventListener('input', function() {
-                    real.value = bound.value;
-                    if (colorPicker) {
-                        colorPicker.value = normHex(bound.value, colorPicker.value);
-                    }
-                    real.dispatchEvent(new Event('change', {bubbles: true}));
-                    renderPreview();
-                    if (name === 'titleanim' || name === 'bodyanim' || name === 'typingspeed') {
-                        playPreviewAnim();
-                    }
-                });
-                bound.addEventListener('change', function() {
-                    real.value = bound.value;
-                    renderPreview();
-                    if (name === 'titleanim' || name === 'bodyanim' || name === 'typingspeed') {
-                        playPreviewAnim();
-                    }
-                });
+                bound.value = ic;
             }
-
-            if (colorPicker) {
-                colorPicker.value = normHex(real.value, '#6366f1');
-                colorPicker.addEventListener('input', function() {
-                    real.value = colorPicker.value;
-                    if (bound) {
-                        bound.value = colorPicker.value;
-                    }
-                    real.dispatchEvent(new Event('change', {bubbles: true}));
-                    renderPreview();
-                });
+            if (real) {
+                real.value = ic;
+                real.dispatchEvent(new Event('change', {bubbles: true}));
             }
+            renderPreview();
         });
+    });
 
-        document.querySelectorAll('.lx-header-tab').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                activeMode = btn.dataset.mode;
-                document.querySelectorAll('.lx-header-tab').forEach(function(b) {
-                    b.classList.remove('active');
-                });
-                document.querySelectorAll('.lx-mode-pane').forEach(function(p) {
-                    p.classList.remove('active');
-                });
-                btn.classList.add('active');
-                var pane = document.querySelector('.lx-mode-pane[data-mode-pane="' + activeMode + '"]');
-                if (pane) {
-                    pane.classList.add('active');
-                }
-                if (activeMode === 'tours') {
-                    renderToursList();
-                }
-                renderPreview();
-                playPreviewAnim();
-            });
+    const resetBtn = document.getElementById('lx-reset-defaults');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            applyValues(defaults);
         });
-
-        document.querySelectorAll('.lx-filter-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                activeFilter = btn.dataset.tourFilter;
-                document.querySelectorAll('.lx-filter-btn').forEach(function(b) {
-                    b.classList.remove('active');
-                });
-                btn.classList.add('active');
-                renderToursList();
-            });
-        });
-
-        document.querySelectorAll('[data-step-bind]').forEach(function(input) {
-            var key = input.getAttribute('data-step-bind');
-            var picker = document.querySelector('[data-step-color="' + key + '"]');
-            input.addEventListener('input', function() {
-                if (picker && /^#[0-9a-fA-F]{6}$/.test(input.value)) {
-                    picker.value = input.value;
-                }
-                updateStepField(key, input.value.trim());
-            });
-            input.addEventListener('change', function() {
-                updateStepField(key, input.value.trim());
-            });
-        });
-
-        document.querySelectorAll('[data-step-color]').forEach(function(picker) {
-            var key = picker.getAttribute('data-step-color');
-            var input = document.querySelector('[data-step-bind="' + key + '"]');
-            picker.addEventListener('input', function() {
-                if (input) {
-                    input.value = picker.value;
-                }
-                updateStepField(key, picker.value);
-            });
-        });
-
-        document.querySelectorAll('[data-step-icon]').forEach(function(chip) {
-            chip.addEventListener('click', function() {
-                var ic = chip.getAttribute('data-step-icon');
-                var input = document.querySelector('[data-step-bind="icon"]');
-                if (input) {
-                    input.value = ic;
-                }
-                updateStepField('icon', ic);
-            });
-        });
-
-        var stepResetBtn = document.getElementById('lx-step-reset');
-        if (stepResetBtn) {
-            stepResetBtn.addEventListener('click', function() {
-                if (!selectedStep) {
-                    return;
-                }
-                delete stepOverrides[String(selectedStep.id)];
-                saveStepOverridesToInput();
-                populateStepEditor();
-                renderPreview();
-                playPreviewAnim();
-            });
-        }
-
-        document.querySelectorAll('.lx-studio-tab').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.lx-studio-tab').forEach(function(b) {
-                    b.classList.remove('active');
-                });
-                document.querySelectorAll('.lx-studio-pane').forEach(function(p) {
-                    p.classList.remove('active');
-                });
-                btn.classList.add('active');
-                var pane = document.querySelector('.lx-studio-pane[data-pane="' + btn.dataset.tab + '"]');
-                if (pane) {
-                    pane.classList.add('active');
-                }
-            });
-        });
-
-        document.querySelectorAll('[data-pick-icon]').forEach(function(chip) {
-            chip.addEventListener('click', function() {
-                var ic = chip.getAttribute('data-pick-icon');
-                var bound = document.querySelector('[data-bind="headericon"]');
-                var real = mInput('headericon');
-                if (bound) {
-                    bound.value = ic;
-                }
-                if (real) {
-                    real.value = ic;
-                    real.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-                renderPreview();
-            });
-        });
-
-        var resetBtn = document.getElementById('lx-reset-defaults');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function() {
-                applyValues(defaults);
-            });
-        }
-
-        var matchBtn = document.getElementById('lx-match-platform');
-        if (matchBtn) {
-            matchBtn.addEventListener('click', function() {
-                var brand = detectPlatformBrandColor();
-                applyValues({
-                    primarycolor: brand,
-                    nextbtnbg: brand,
-                    accentcolor1: brand,
-                    spotlightcolor: brand
-                });
-            });
-        }
-
-        var replayBtn = document.getElementById('lx-replay-anim');
-        if (replayBtn) {
-            replayBtn.addEventListener('click', playPreviewAnim);
-        }
-
-        renderPreview();
-        playPreviewAnim();
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initStudio);
-    } else {
-        setTimeout(initStudio, 50);
+    const matchBtn = document.getElementById('lx-match-platform');
+    if (matchBtn) {
+        matchBtn.addEventListener('click', () => {
+            const brand = detectPlatformBrandColor();
+            applyValues({
+                primarycolor: brand,
+                nextbtnbg: brand,
+                accentcolor1: brand,
+                spotlightcolor: brand,
+            });
+        });
     }
-})();
+
+    const replayBtn = document.getElementById('lx-replay-anim');
+    if (replayBtn) {
+        replayBtn.addEventListener('click', playPreviewAnim);
+    }
+
+    renderPreview();
+    playPreviewAnim();
+};

@@ -26,9 +26,20 @@ namespace local_tourstyler;
 
 use core_component;
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Theme deployer helper class.
+ *
+ * @package    local_tourstyler
+ * @copyright  2026 AbdelrhmanBoghdady support@learn-ix.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class theme_deployer {
+
+    /**
+     * Get target file path for active theme mustache override.
+     *
+     * @return string|null
+     */
     public static function get_target_file(): ?string {
         global $CFG;
 
@@ -41,11 +52,21 @@ class theme_deployer {
         return $themedir . '/templates/tool_usertours/tourstep.mustache';
     }
 
+    /**
+     * Check if override is deployed.
+     *
+     * @return bool
+     */
     public static function is_deployed(): bool {
         $targetfile = self::get_target_file();
         return $targetfile !== null && file_exists($targetfile);
     }
 
+    /**
+     * Deploy template to active theme.
+     *
+     * @return array
+     */
     public static function deploy_to_active_theme(): array {
         global $CFG;
 
@@ -53,27 +74,44 @@ class theme_deployer {
         $targetfile = self::get_target_file();
 
         if ($targetfile === null) {
-            return ['status' => false, 'message' => get_string('err_themedirnotfound', 'local_tourstyler', $theme)];
+            return [
+                'status' => false,
+                'message' => get_string('err_themedirnotfound', 'local_tourstyler', $theme),
+            ];
         }
 
         $targetdir = dirname($targetfile);
 
         if (!is_dir($targetdir)) {
             if (!@mkdir($targetdir, 0775, true)) {
-                return ['status' => false, 'message' => get_string('err_permissioncreate', 'local_tourstyler', $targetdir)];
+                return [
+                    'status' => false,
+                    'message' => get_string('err_permissioncreate', 'local_tourstyler', $targetdir),
+                ];
             }
         }
 
         $mustache = self::get_mustache_template();
         if (@file_put_contents($targetfile, $mustache) === false) {
-            return ['status' => false, 'message' => get_string('err_permissionwrite', 'local_tourstyler', $targetfile)];
+            return [
+                'status' => false,
+                'message' => get_string('err_permissionwrite', 'local_tourstyler', $targetfile),
+            ];
         }
 
         purge_all_caches();
 
-        return ['status' => true, 'message' => get_string('msg_deployed', 'local_tourstyler', $theme)];
+        return [
+            'status' => true,
+            'message' => get_string('msg_deployed', 'local_tourstyler', $theme),
+        ];
     }
 
+    /**
+     * Remove template override from active theme.
+     *
+     * @return array
+     */
     public static function remove_from_active_theme(): array {
         global $CFG;
 
@@ -81,18 +119,32 @@ class theme_deployer {
         $targetfile = self::get_target_file();
 
         if ($targetfile === null || !file_exists($targetfile)) {
-            return ['status' => true, 'message' => get_string('msg_nooverride', 'local_tourstyler', $theme)];
+            return [
+                'status' => true,
+                'message' => get_string('msg_nooverride', 'local_tourstyler', $theme),
+            ];
         }
 
         if (!@unlink($targetfile)) {
-            return ['status' => false, 'message' => get_string('err_permissionremove', 'local_tourstyler', $targetfile)];
+            return [
+                'status' => false,
+                'message' => get_string('err_permissionremove', 'local_tourstyler', $targetfile),
+            ];
         }
 
         purge_all_caches();
 
-        return ['status' => true, 'message' => get_string('msg_removed', 'local_tourstyler', $theme)];
+        return [
+            'status' => true,
+            'message' => get_string('msg_removed', 'local_tourstyler', $theme),
+        ];
     }
 
+    /**
+     * Get mustache template content string.
+     *
+     * @return string
+     */
     private static function get_mustache_template(): string {
         return <<<'MUSTACHE'
 <div data-role="flexitour-step" class="lx-tour-step">
@@ -107,14 +159,19 @@ class theme_deployer {
                     </span>
                     <h5 class="modal-title lx-tour-title" data-placeholder="title"></h5>
                 </div>
-                <button type="button" class="lx-tour-close" data-lx-action="close" aria-label="{{#str}} close, core {{/str}}">
+                <button type="button" class="lx-tour-close" data-lx-action="close"
+                        aria-label="{{#str}} close, core {{/str}}">
                     <i class="fa fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div class="modal-body lx-tour-body" data-placeholder="body"></div>
             <div class="modal-footer lx-tour-footer">
-                <button type="button" class="btn lx-tour-btn lx-tour-btn-end" data-role="end">{{#str}} endtour, tool_usertours {{/str}}</button>
-                <button type="button" class="btn lx-tour-btn lx-tour-btn-primary lx-tour-btn-next" data-role="next">{{#str}} nextstep, tool_usertours {{/str}}</button>
+                <button type="button" class="btn lx-tour-btn lx-tour-btn-end" data-role="end">
+                    {{#str}} endtour, tool_usertours {{/str}}
+                </button>
+                <button type="button" class="btn lx-tour-btn lx-tour-btn-primary lx-tour-btn-next" data-role="next">
+                    {{#str}} nextstep, tool_usertours {{/str}}
+                </button>
             </div>
         </div>
     </div>

@@ -26,12 +26,21 @@ namespace local_tourstyler\privacy;
 
 use core_privacy\local\metadata\null_provider;
 
-defined('MOODLE_INTERNAL') || die();
+/**
+ * Privacy provider implementation class.
+ *
+ * @package    local_tourstyler
+ * @copyright  2026 AbdelrhmanBoghdady support@learn-ix.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class provider implements null_provider {
 
-class provider implements null_provider
-{
-    public static function get_reason(): string
-    {
+    /**
+     * Get the privacy reason language string.
+     *
+     * @return string
+     */
+    public static function get_reason(): string {
         return 'privacy:metadata';
     }
 }

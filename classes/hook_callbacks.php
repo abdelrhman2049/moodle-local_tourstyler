@@ -26,9 +26,21 @@ namespace local_tourstyler;
 
 use core\hook\output\before_standard_head_html_generation;
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Hook callbacks helper class.
+ *
+ * @package    local_tourstyler
+ * @copyright  2026 AbdelrhmanBoghdady support@learn-ix.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class hook_callbacks {
+
+    /**
+     * Hook callback for injecting custom CSS, JS, and variables into head HTML.
+     *
+     * @param before_standard_head_html_generation $hook
+     * @return void
+     */
     public static function before_standard_head_html_generation(
         before_standard_head_html_generation $hook
     ): void {
@@ -48,16 +60,43 @@ class hook_callbacks {
             $preset = 'saas';
         }
 
-        $primary = self::sanitize_color(get_config('local_tourstyler', 'primarycolor'), '#6366f1');
-        $headerbg = self::sanitize_color(get_config('local_tourstyler', 'headerbg'), '#ffffff');
-        $titlecolor = self::sanitize_color(get_config('local_tourstyler', 'titlecolor'), '#0f172a');
-        $footerbg = self::sanitize_color(get_config('local_tourstyler', 'footerbg'), '#f8fafc');
-        $textcolor = self::sanitize_color(get_config('local_tourstyler', 'textcolor'), '#475569');
+        $primary = self::sanitize_color(
+            get_config('local_tourstyler', 'primarycolor'),
+            '#6366f1'
+        );
+        $headerbg = self::sanitize_color(
+            get_config('local_tourstyler', 'headerbg'),
+            '#ffffff'
+        );
+        $titlecolor = self::sanitize_color(
+            get_config('local_tourstyler', 'titlecolor'),
+            '#0f172a'
+        );
+        $footerbg = self::sanitize_color(
+            get_config('local_tourstyler', 'footerbg'),
+            '#f8fafc'
+        );
+        $textcolor = self::sanitize_color(
+            get_config('local_tourstyler', 'textcolor'),
+            '#475569'
+        );
 
-        $nextbtnbg = self::sanitize_color(get_config('local_tourstyler', 'nextbtnbg'), $primary);
-        $nextbtntext = self::sanitize_color(get_config('local_tourstyler', 'nextbtntext'), '#ffffff');
-        $endbtnbg = self::sanitize_color(get_config('local_tourstyler', 'endbtnbg'), '#ffffff');
-        $endbtntext = self::sanitize_color(get_config('local_tourstyler', 'endbtntext'), '#475569');
+        $nextbtnbg = self::sanitize_color(
+            get_config('local_tourstyler', 'nextbtnbg'),
+            $primary
+        );
+        $nextbtntext = self::sanitize_color(
+            get_config('local_tourstyler', 'nextbtntext'),
+            '#ffffff'
+        );
+        $endbtnbg = self::sanitize_color(
+            get_config('local_tourstyler', 'endbtnbg'),
+            '#ffffff'
+        );
+        $endbtntext = self::sanitize_color(
+            get_config('local_tourstyler', 'endbtntext'),
+            '#475569'
+        );
 
         $rawradius = get_config('local_tourstyler', 'borderradius');
         $radius = ($rawradius === false || $rawradius === '') ? 20 : max(0, min(48, (int)$rawradius));
@@ -70,23 +109,41 @@ class hook_callbacks {
             $accentstyle = 'gradient_animated';
         }
 
-        $accentcolor1 = self::sanitize_color(get_config('local_tourstyler', 'accentcolor1'), '#6366f1');
-        $accentcolor2 = self::sanitize_color(get_config('local_tourstyler', 'accentcolor2'), '#8b5cf6');
-        $accentcolor3 = self::sanitize_color(get_config('local_tourstyler', 'accentcolor3'), '#0ea5e9');
-        $spotlightcolor = self::sanitize_color(get_config('local_tourstyler', 'spotlightcolor'), $primary);
+        $accentcolor1 = self::sanitize_color(
+            get_config('local_tourstyler', 'accentcolor1'),
+            '#6366f1'
+        );
+        $accentcolor2 = self::sanitize_color(
+            get_config('local_tourstyler', 'accentcolor2'),
+            '#8b5cf6'
+        );
+        $accentcolor3 = self::sanitize_color(
+            get_config('local_tourstyler', 'accentcolor3'),
+            '#0ea5e9'
+        );
+        $spotlightcolor = self::sanitize_color(
+            get_config('local_tourstyler', 'spotlightcolor'),
+            $primary
+        );
 
         $rawaccentheight = get_config('local_tourstyler', 'accentheight');
-        $accentheight = ($rawaccentheight === false || $rawaccentheight === '') ? 5 : max(0, min(20, (int)$rawaccentheight));
+        $accentheight = ($rawaccentheight === false || $rawaccentheight === '') ?
+            5 : max(0, min(20, (int)$rawaccentheight));
 
         $backdropmode = (string)(get_config('local_tourstyler', 'backdropmode') ?: 'blur');
         if (!in_array($backdropmode, ['blur', 'solid', 'transparent', 'none'], true)) {
             $backdropmode = 'blur';
         }
-        $backdropcolor = self::sanitize_color(get_config('local_tourstyler', 'backdropcolor'), '#0f172a');
+        $backdropcolor = self::sanitize_color(
+            get_config('local_tourstyler', 'backdropcolor'),
+            '#0f172a'
+        );
         $rawbdopacity = get_config('local_tourstyler', 'backdropopacity');
-        $backdropopacity = ($rawbdopacity === false || $rawbdopacity === '') ? 58 : max(0, min(95, (int)$rawbdopacity));
+        $backdropopacity = ($rawbdopacity === false || $rawbdopacity === '') ?
+            58 : max(0, min(95, (int)$rawbdopacity));
         $rawbdblur = get_config('local_tourstyler', 'backdropblur');
-        $backdropblur = ($rawbdblur === false || $rawbdblur === '') ? 4 : max(0, min(20, (int)$rawbdblur));
+        $backdropblur = ($rawbdblur === false || $rawbdblur === '') ?
+            4 : max(0, min(20, (int)$rawbdblur));
 
         $headericon = trim((string)(get_config('local_tourstyler', 'headericon') ?: 'fa fa-star'));
         $headericon = preg_replace('/[^a-zA-Z0-9\-\s_]/', '', $headericon) ?: 'fa fa-star';
@@ -97,7 +154,8 @@ class hook_callbacks {
         }
 
         $rawspeed = get_config('local_tourstyler', 'typingspeed');
-        $typingspeed = ($rawspeed === false || $rawspeed === '') ? 35 : max(15, min(90, (int)$rawspeed));
+        $typingspeed = ($rawspeed === false || $rawspeed === '') ?
+            35 : max(15, min(90, (int)$rawspeed));
 
         $bodyanim = (string)(get_config('local_tourstyler', 'bodyanim') ?: 'fade_up');
         if (!in_array($bodyanim, ['fade_up', 'blur_in', 'slide_in', 'none'], true)) {
@@ -225,6 +283,13 @@ HTML;
         $hook->add_html($html);
     }
 
+    /**
+     * Sanitize color string.
+     *
+     * @param mixed $value
+     * @param string $fallback
+     * @return string
+     */
     private static function sanitize_color(mixed $value, string $fallback): string {
         if (!is_string($value)) {
             return $fallback;
@@ -236,6 +301,13 @@ HTML;
         return $fallback;
     }
 
+    /**
+     * Convert hex color to rgba string.
+     *
+     * @param string $hex
+     * @param float $alpha
+     * @return string
+     */
     private static function hex_to_rgba(string $hex, float $alpha): string {
         $clean = ltrim($hex, '#');
         if (strlen($clean) === 3) {
